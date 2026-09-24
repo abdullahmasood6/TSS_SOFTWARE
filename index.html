@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Northwharf — TSS Software</title>
+    <style>
+      :root {
+        --navy: #0b1f3a;
+        --steel: #1f6feb;
+        --slate: #5b6b7c;
+        --bg: #f4f7fb;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: var(--navy);
+        background:
+          radial-gradient(ellipse at top, rgba(31, 111, 235, 0.18), transparent 55%),
+          linear-gradient(180deg, #0b1f3a 0%, #0b203a 42%, var(--bg) 42%);
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 4.5rem 1.25rem 3rem;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+      .mark {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 0.75rem;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+      h1 {
+        margin: 0;
+        color: #fff;
+        font-size: clamp(1.8rem, 4vw, 2.4rem);
+        letter-spacing: -0.02em;
+      }
+      .sub {
+        margin: 0.35rem 0 0;
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.95rem;
+      }
+      .card {
+        margin-top: 2.5rem;
+        background: #fff;
+        border: 1px solid #d9e2ec;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 24px 60px -36px rgba(11, 31, 58, 0.55);
+      }
+      p { color: var(--slate); line-height: 1.55; }
+      a.btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin: 0.35rem 0.5rem 0.35rem 0;
+        padding: 0.7rem 1rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.92rem;
+      }
+      .primary { background: var(--navy); color: #fff; }
+      .ghost { background: #fff; color: var(--navy); border: 1px solid #c9d4e2; }
+      code {
+        font-size: 0.85em;
+        background: #eef3f9;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+      }
+      ul { color: var(--slate); padding-left: 1.1rem; }
+      .note {
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: var(--slate);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">
+        <div class="mark">NW</div>
+        <div>
+          <h1>Northwharf</h1>
+          <p class="sub">Supply-chain operations platform</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <p>
+          Internal enquiry → RFQ → quote → PO → purchase workflow with marketplace,
+          invoices, payments, contracts, and KYC controls.
+        </p>
+        <p>
+          Source code lives on GitHub. The live app needs a Node host and Postgres
+          (not static GitHub Pages).
+        </p>
+        <div>
+          <a class="btn primary" href="https://northwharf.vercel.app">
+            Open live app
+          </a>
+          <a class="btn ghost" href="https://github.com/abdullahmasood6/TSS_SOFTWARE">
+            View repository
+          </a>
+        </div>
+        <ul>
+          <li>Stable app URL: <code>https://northwharf.vercel.app</code></li>
+          <li>Clone: <code>git clone https://github.com/abdullahmasood6/TSS_SOFTWARE.git</code></li>
+          <li>Local: Docker Postgres + <code>npm run dev</code></li>
+          <li>Production needs a managed Postgres (<code>DATABASE_URL</code>) on Vercel</li>
+        </ul>
+        <p class="note">
+          This GitHub Pages site is the stable project landing page at
+          <code>abdullahmasood6.github.io/TSS_SOFTWARE</code>.
+        </p>
+      </div>
+    </main>
+  </body>
+</html>
