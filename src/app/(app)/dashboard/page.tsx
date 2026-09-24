@@ -1,14 +1,20 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/permissions";
-import { getWorkQueueCounts, statusesForTab, type WorkQueueTab } from "@/lib/work-queue";
+import {
+  getWorkQueueCounts,
+  statusesForTab,
+  overdueFilterForTab,
+  type WorkQueueTab,
+} from "@/lib/work-queue";
 import { StatusBadge } from "@/lib/status";
 import { formatDate, cn } from "@/lib/utils";
-import { Panel } from "@/components/ui/panel";
+import { PageHeader, Panel } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { ExportButton } from "@/components/ui/export-button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, FolderOpen, CheckCircle2, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, FolderOpen, Clock } from "lucide-react";
 
 export default async function DashboardPage({
   searchParams,
@@ -27,12 +33,14 @@ export default async function DashboardPage({
   const view = sp.view === "closed" ? "closed" : "in-process";
   const tab = (sp.tab as WorkQueueTab) || (view === "closed" ? "closed" : "in-process");
   const statuses = statusesForTab(tab);
+  const overdueWhere = overdueFilterForTab(tab);
 
   const [counts, rows] = await Promise.all([
     getWorkQueueCounts(),
     prisma.enquiry.findMany({
       where: {
         ...(statuses ? { status: { in: statuses } } : {}),
+        ...(overdueWhere || {}),
         ...(sp.mine === "1" ? { ownerId: session.user.id } : {}),
         ...(sp.q
           ? {
@@ -41,6 +49,7 @@ export default async function DashboardPage({
                 { subject: { contains: sp.q, mode: "insensitive" } },
                 { reference: { contains: sp.q, mode: "insensitive" } },
                 { vesselName: { contains: sp.q, mode: "insensitive" } },
+                { deliveryPort: { contains: sp.q, mode: "insensitive" } },
                 { customer: { name: { contains: sp.q, mode: "insensitive" } } },
               ],
             }
@@ -52,7 +61,7 @@ export default async function DashboardPage({
           ? { customer: { name: { contains: sp.customer, mode: "insensitive" } } }
           : {}),
       },
-      orderBy: [{ priority: "desc" }, { receivedAt: "desc" }],
+      orderBy: [{ priority: "desc" }, { dueDate: "asc" }, { receivedAt: "desc" }],
       include: {
         customer: true,
         owner: true,
@@ -89,17 +98,18 @@ export default async function DashboardPage({
       hint: "Build customer quotes",
     },
     {
-      label: "Awaiting approval",
-      value: counts.awaitingApproval,
-      tone: counts.awaitingApproval > 0 ? "warn" : "ok",
-      href: "/dashboard?tab=awaiting-approval",
-      icon: CheckCircle2,
-      hint: "Follow up customers",
+      label: "Overdue",
+      value: counts.overdue,
+      tone: counts.overdue > 0 ? "danger" : "ok",
+      href: "/dashboard?tab=overdue",
+      icon: AlertTriangle,
+      hint: "Past due date",
     },
   ] as const;
 
   const processTabs: { id: WorkQueueTab; label: string; count: number }[] = [
     { id: "in-process", label: "All in process", count: counts.inProcess },
+    { id: "overdue", label: "Overdue", count: counts.overdue },
     { id: "needs-rfq", label: "Needs RFQ", count: counts.needsRfq },
     { id: "awaiting-supplier", label: "Awaiting supplier", count: counts.awaitingSupplier },
     { id: "ready-to-quote", label: "Ready to quote", count: counts.readyToQuote },
@@ -110,23 +120,18 @@ export default async function DashboardPage({
 
   return (
     <div className="animate-fade-up">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="mb-1.5 h-0.5 w-8 rounded-full bg-tss-steel" />
-          <h1 className="text-[1.65rem] font-semibold tracking-[-0.03em] text-tss-navy">
-            Manage daily workflow
-          </h1>
-          <p className="mt-1.5 text-[0.925rem] text-tss-slate">
-            Actionable queue for enquiries, RFQs, quotes, and purchases.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <ExportButton entity="enquiries" />
-          <Button asChild>
-            <Link href="/enquiries/new">New enquiry</Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Daily work queue"
+        description={`Hi ${session.user.name.split(" ")[0]} — ${counts.actionItems} action item${counts.actionItems === 1 ? "" : "s"} across RFQ, quoting, and purchases.`}
+        actions={
+          <div className="flex gap-2">
+            <ExportButton entity="enquiries" />
+            <Button asChild>
+              <Link href="/enquiries/new">New enquiry</Link>
+            </Button>
+          </div>
+        }
+      />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((k, i) => {
@@ -141,8 +146,10 @@ export default async function DashboardPage({
               <Panel
                 className={cn(
                   "tss-kpi px-4 py-4",
-                  k.tone === "danger" && "border-tss-danger/35 bg-gradient-to-br from-red-50/90 to-white",
-                  k.tone === "warn" && "border-amber-300/50 bg-gradient-to-br from-amber-50/70 to-white",
+                  k.tone === "danger" &&
+                    "border-tss-danger/35 bg-gradient-to-br from-red-50/90 to-white",
+                  k.tone === "warn" &&
+                    "border-amber-300/50 bg-gradient-to-br from-amber-50/70 to-white",
                   k.tone === "ok" && "bg-gradient-to-br from-white to-tss-steel-soft/30"
                 )}
               >
@@ -218,11 +225,6 @@ export default async function DashboardPage({
         >
           My work
         </Link>
-        {counts.overdue > 0 ? (
-          <span className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-tss-danger">
-            {counts.overdue} overdue
-          </span>
-        ) : null}
       </div>
 
       {view === "in-process" ? (
@@ -234,7 +236,9 @@ export default async function DashboardPage({
               className={cn(
                 "rounded-md px-2.5 py-1.5 text-xs font-semibold transition",
                 tab === t.id
-                  ? "bg-tss-navy text-white shadow-sm"
+                  ? t.id === "overdue"
+                    ? "bg-tss-danger text-white shadow-sm"
+                    : "bg-tss-navy text-white shadow-sm"
                   : "text-tss-slate hover:bg-tss-steel-soft/80 hover:text-tss-navy"
               )}
             >
@@ -260,68 +264,91 @@ export default async function DashboardPage({
       </Panel>
 
       <Panel className="overflow-hidden">
+        <div className="border-b border-tss-border px-4 py-2.5 text-xs text-tss-slate">
+          Showing {rows.length} enquir{rows.length === 1 ? "y" : "ies"}
+          {tab === "overdue" ? " past due date" : ""}
+        </div>
         <div className="overflow-x-auto">
-          <table className="tss-table min-w-[960px]">
+          <table className="tss-table min-w-[1080px]">
             <thead>
               <tr>
                 <th>Received</th>
+                <th>Due</th>
                 <th>Number</th>
-                <th>Buyer / C.Person</th>
-                <th>Vessel</th>
-                <th>Reference / category</th>
+                <th>Buyer</th>
+                <th>Vessel / port</th>
+                <th>Reference</th>
                 <th>Status</th>
                 <th>Owner</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {rows.map((e) => (
-                <tr key={e.id}>
-                  <td className="whitespace-nowrap text-xs text-tss-slate">
-                    {formatDate(e.receivedAt)}
-                    {e.priority === "URGENT" ? (
-                      <div className="mt-0.5 font-semibold tracking-wide text-tss-danger">
-                        URGENT
-                      </div>
-                    ) : null}
-                  </td>
-                  <td>
-                    <Link
-                      href={`/enquiries/${e.id}`}
-                      className="font-semibold text-tss-steel hover:underline"
+              {rows.map((e) => {
+                const isOverdue =
+                  !!e.dueDate &&
+                  e.dueDate.getTime() < Date.now() &&
+                  !["COMPLETED", "CANCELLED", "REJECTED"].includes(e.status);
+                return (
+                  <tr key={e.id}>
+                    <td className="whitespace-nowrap text-xs text-tss-slate">
+                      {formatDate(e.receivedAt)}
+                      {e.priority === "URGENT" || e.priority === "HIGH" ? (
+                        <div className="mt-0.5">
+                          <Badge tone="danger">{e.priority}</Badge>
+                        </div>
+                      ) : null}
+                    </td>
+                    <td
+                      className={cn(
+                        "whitespace-nowrap text-xs",
+                        isOverdue ? "font-semibold text-tss-danger" : "text-tss-slate"
+                      )}
                     >
-                      {e.number}
-                    </Link>
-                    <div className="mt-0.5 text-[11px] text-tss-slate">
-                      {e._count.lines} lines · {e._count.rfqs} RFQs · {e._count.customerQuotes}{" "}
-                      quotes
-                    </div>
-                  </td>
-                  <td>
-                    <div className="font-medium text-tss-ink">{e.customer.name}</div>
-                    <div className="text-xs text-tss-slate">{e.customer.contact || "—"}</div>
-                  </td>
-                  <td className="font-medium">{e.vessel?.name || e.vesselName || "—"}</td>
-                  <td>
-                    <div className="text-tss-slate">{e.reference || "—"}</div>
-                    <div className="text-xs text-tss-ink/80">
-                      {e.category || e.subject || "SPARES"}
-                    </div>
-                  </td>
-                  <td>
-                    <StatusBadge status={e.status} />
-                  </td>
-                  <td className="text-tss-slate">{e.owner?.name || "—"}</td>
-                  <td className="text-right">
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/enquiries/${e.id}`}>Open</Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+                      {e.dueDate ? formatDate(e.dueDate) : "—"}
+                      {isOverdue ? <div className="text-[10px] uppercase">Overdue</div> : null}
+                    </td>
+                    <td>
+                      <Link
+                        href={`/enquiries/${e.id}`}
+                        className="font-semibold text-tss-steel hover:underline"
+                      >
+                        {e.number}
+                      </Link>
+                      <div className="mt-0.5 text-[11px] text-tss-slate">
+                        {e._count.lines} lines · {e._count.rfqs} RFQs ·{" "}
+                        {e._count.customerQuotes} quotes
+                      </div>
+                    </td>
+                    <td>
+                      <div className="font-medium text-tss-ink">{e.customer.name}</div>
+                      <div className="text-xs text-tss-slate">{e.customer.contact || "—"}</div>
+                    </td>
+                    <td>
+                      <div className="font-medium">{e.vessel?.name || e.vesselName || "—"}</div>
+                      <div className="text-xs text-tss-slate">{e.deliveryPort || "—"}</div>
+                    </td>
+                    <td>
+                      <div className="text-tss-slate">{e.reference || "—"}</div>
+                      <div className="text-xs text-tss-ink/80">
+                        {e.category || e.subject || "SPARES"}
+                      </div>
+                    </td>
+                    <td>
+                      <StatusBadge status={e.status} />
+                    </td>
+                    <td className="text-tss-slate">{e.owner?.name || "—"}</td>
+                    <td className="text-right">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/enquiries/${e.id}`}>Open</Link>
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="!py-14 text-center text-tss-slate">
+                  <td colSpan={9} className="!py-14 text-center text-tss-slate">
                     No items in this queue.
                   </td>
                 </tr>

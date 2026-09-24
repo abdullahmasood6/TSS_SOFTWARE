@@ -9,6 +9,7 @@ export type WorkQueueTab =
   | "unconfirmed-po"
   | "confirmed-po"
   | "in-process"
+  | "overdue"
   | "closed";
 
 export const WORK_QUEUE_TABS: {
@@ -51,6 +52,10 @@ export const WORK_QUEUE_TABS: {
     label: "In process",
   },
   {
+    id: "overdue",
+    label: "Overdue",
+  },
+  {
     id: "closed",
     label: "Closed",
     statuses: [
@@ -74,9 +79,14 @@ const OPEN_STATUSES: EnquiryStatus[] = [
 ];
 
 export function statusesForTab(tab: WorkQueueTab): EnquiryStatus[] | undefined {
-  if (tab === "in-process") return OPEN_STATUSES;
+  if (tab === "in-process" || tab === "overdue") return OPEN_STATUSES;
   const found = WORK_QUEUE_TABS.find((t) => t.id === tab);
   return found?.statuses;
+}
+
+export function overdueFilterForTab(tab: WorkQueueTab) {
+  if (tab !== "overdue") return undefined;
+  return { dueDate: { lt: new Date() } };
 }
 
 export async function getWorkQueueCounts() {

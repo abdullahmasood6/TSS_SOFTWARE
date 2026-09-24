@@ -25,24 +25,52 @@ import {
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 
-const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/enquiries", label: "Enquiries", icon: FileSearch },
-  { href: "/quotes", label: "Customer Quotes", icon: FileText },
-  { href: "/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/invoices", label: "Invoices", icon: Receipt },
-  { href: "/payments", label: "Payments", icon: Wallet },
-  { href: "/contracts", label: "Contracts", icon: ScrollText },
-  { href: "/marketplace", label: "Marketplace", icon: Store },
-  { href: "/vessels", label: "Vessels", icon: Ship },
-  { href: "/templates", label: "Templates", icon: LayoutTemplate },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/catalog", label: "Catalog", icon: Package },
-  { href: "/price-history", label: "Price History", icon: History },
-  { href: "/customers", label: "Customers", icon: Users },
-  { href: "/suppliers", label: "Suppliers", icon: Truck },
-  { href: "/profile", label: "My Profile", icon: UserRound },
-  { href: "/settings", label: "Settings", icon: Settings },
+const groups: {
+  label: string;
+  items: { href: string; label: string; icon: typeof LayoutDashboard }[];
+}[] = [
+  {
+    label: "Work",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/enquiries", label: "Enquiries", icon: FileSearch },
+      { href: "/quotes", label: "Customer Quotes", icon: FileText },
+    ],
+  },
+  {
+    label: "Fulfillment",
+    items: [
+      { href: "/orders", label: "Orders", icon: ShoppingCart },
+      { href: "/invoices", label: "Invoices", icon: Receipt },
+      { href: "/payments", label: "Payments", icon: Wallet },
+      { href: "/contracts", label: "Contracts", icon: ScrollText },
+    ],
+  },
+  {
+    label: "Network",
+    items: [
+      { href: "/marketplace", label: "Marketplace", icon: Store },
+      { href: "/customers", label: "Customers", icon: Users },
+      { href: "/suppliers", label: "Suppliers", icon: Truck },
+      { href: "/vessels", label: "Vessels", icon: Ship },
+    ],
+  },
+  {
+    label: "Catalog",
+    items: [
+      { href: "/catalog", label: "Parts catalog", icon: Package },
+      { href: "/templates", label: "Templates", icon: LayoutTemplate },
+      { href: "/price-history", label: "Price History", icon: History },
+      { href: "/reports", label: "Reports", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { href: "/profile", label: "My Profile", icon: UserRound },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export function Sidebar({
@@ -66,44 +94,49 @@ export function Sidebar({
           </div>
           <div className="min-w-0">
             <div className="text-[1.05rem] font-semibold tracking-[-0.01em]">Northwharf</div>
-            <div className="mt-0.5 text-[10.5px] leading-snug text-white/55">
-              Operations
-            </div>
+            <div className="mt-0.5 text-[10.5px] leading-snug text-white/55">Operations</div>
           </div>
         </div>
       </div>
 
-      <nav className="relative flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-        <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
-          Operations
-        </div>
-        {nav.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.875rem] transition-all duration-150",
-                active
-                  ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-                  : "text-white/65 hover:bg-white/[0.07] hover:text-white"
-              )}
-            >
-              {active ? (
-                <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-tss-steel-mid animate-slide-in" />
-              ) : null}
-              <Icon
-                className={cn(
-                  "h-4 w-4 shrink-0 transition-opacity",
-                  active ? "opacity-100" : "opacity-70 group-hover:opacity-90"
-                )}
-              />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="relative flex-1 space-y-4 overflow-y-auto px-3 py-4">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+              {group.label}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active =
+                  pathname === item.href || pathname.startsWith(item.href + "/");
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-[0.875rem] transition-all duration-150",
+                      active
+                        ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+                        : "text-white/65 hover:bg-white/[0.07] hover:text-white"
+                    )}
+                  >
+                    {active ? (
+                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-tss-steel-mid animate-slide-in" />
+                    ) : null}
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-opacity",
+                        active ? "opacity-100" : "opacity-70 group-hover:opacity-90"
+                      )}
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="relative border-t border-white/10 bg-black/10 px-4 py-4 backdrop-blur-sm">

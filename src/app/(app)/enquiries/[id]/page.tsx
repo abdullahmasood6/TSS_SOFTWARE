@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/documents";
 import { PageHeader, Panel } from "@/components/ui/panel";
-import { StatusBadge, PIPELINE_ORDER, statusLabel } from "@/lib/status";
-import { formatDate, decimalToNumber, cn } from "@/lib/utils";
+import { formatDate, decimalToNumber } from "@/lib/utils";
 import { RfqPanel } from "@/components/enquiries/rfq-panel";
 import { QuoteBuilder } from "@/components/enquiries/quote-builder";
 import { OrdersPanel } from "@/components/enquiries/orders-panel";
@@ -12,8 +11,14 @@ import { EnquiryEditor } from "@/components/enquiries/enquiry-editor";
 import { QuoteComparison } from "@/components/enquiries/quote-comparison";
 import { TransactionMonitor } from "@/components/enquiries/transaction-monitor";
 import { AttachmentsPanel } from "@/components/enquiries/attachments-panel";
+import {
+  EnquiryWorkspace,
+  sumBestCosts,
+} from "@/components/enquiries/enquiry-workspace";
 import { ExportButton } from "@/components/ui/export-button";
+import { StatusBadge } from "@/lib/status";
 import { buildTransactionMonitor } from "@/lib/transaction-monitor";
+import { Button } from "@/components/ui/button";
 
 export default async function EnquiryDetailPage({
   params,
@@ -103,240 +108,240 @@ export default async function EnquiryDetailPage({
     return { id: r.supplierId, name: r.supplier.name, costs };
   });
 
-  const statusIndex = PIPELINE_ORDER.indexOf(enquiry.status);
   const canEditLines =
     enquiry.rfqs.length === 0 &&
     enquiry.customerQuotes.length === 0 &&
     enquiry.supplierPurchases.length === 0;
 
+  const { total: bestCostTotal, covered: quotedLineCount } = sumBestCosts(
+    plainLines.map((l) => ({ id: l.id, quantity: l.quantity })),
+    supplierQuoteLines.map((l) => ({
+      enquiryLineId: l.enquiryLineId,
+      unitCost: l.unitCost,
+    }))
+  );
+
+  const docs = [
+    ...enquiry.customerQuotes.map((q) => ({
+      kind: "quote" as const,
+      id: q.id,
+      label: `Quote ${q.number}`,
+      meta: q.status,
+      href: `/quotes/${q.id}`,
+    })),
+    ...enquiry.purchaseOrders.map((po) => ({
+      kind: "po" as const,
+      id: po.id,
+      label: `Customer PO ${po.number}`,
+      meta: po.customerPoRef || undefined,
+      href: `/orders`,
+    })),
+    ...enquiry.supplierPurchases.map((p) => ({
+      kind: "purchase" as const,
+      id: p.id,
+      label: `Purchase ${p.number}`,
+      meta: `${p.supplier.name} · ${p.status}`,
+      href: `/api/pdf/purchase/${p.id}`,
+    })),
+    ...enquiry.rfqs.map((r) => ({
+      kind: "rfq" as const,
+      id: r.id,
+      label: `RFQ ${r.number}`,
+      meta: r.supplier.name,
+      href: `/api/pdf/rfq/${r.id}`,
+    })),
+  ];
+
+  const editor = (
+    <EnquiryEditor
+      enquiry={{
+        id: enquiry.id,
+        customerId: enquiry.customerId,
+        vesselId: enquiry.vesselId,
+        ownerId: enquiry.ownerId,
+        subject: enquiry.subject,
+        vesselName: enquiry.vesselName,
+        category: enquiry.category,
+        priority: enquiry.priority,
+        reference: enquiry.reference,
+        deliveryPort: enquiry.deliveryPort,
+        notes: enquiry.notes,
+        dueDate: enquiry.dueDate,
+        status: enquiry.status,
+        lines: plainLines,
+      }}
+      customers={customers}
+      users={users}
+      vessels={vessels}
+      canEditLines={canEditLines}
+    />
+  );
+
+  const linesTable = (
+    <Panel>
+      <div className="border-b border-tss-border px-4 py-3 text-sm font-semibold text-tss-navy">
+        {enquiry.lines.length} line{enquiry.lines.length === 1 ? "" : "s"}
+      </div>
+      <table className="tss-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Part</th>
+            <th>IMPA</th>
+            <th>Brand</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Specs</th>
+          </tr>
+        </thead>
+        <tbody>
+          {enquiry.lines.map((l, idx) => (
+            <tr key={l.id}>
+              <td className="text-tss-slate">{idx + 1}</td>
+              <td className="font-mono text-xs font-medium">{l.partNumber}</td>
+              <td className="font-mono text-xs text-tss-slate">{l.impaCode || "—"}</td>
+              <td className="text-tss-slate">{l.brand || "—"}</td>
+              <td>
+                <div>{l.description}</div>
+                {l.notes ? (
+                  <div className="mt-0.5 text-xs text-tss-slate">{l.notes}</div>
+                ) : null}
+              </td>
+              <td>{decimalToNumber(l.quantity)}</td>
+              <td>{l.unit}</td>
+              <td className="max-w-[12rem] truncate text-xs text-tss-slate">
+                {l.specs || "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
+  );
+
   return (
     <div>
       <PageHeader
         title={enquiry.number}
-        description={`${enquiry.customer.name}${enquiry.vesselName ? ` · ${enquiry.vesselName}` : ""}${enquiry.deliveryPort ? ` · ${enquiry.deliveryPort}` : ""}`}
+        description={
+          <>
+            <Link href={`/customers/${enquiry.customerId}`} className="hover:underline">
+              {enquiry.customer.name}
+            </Link>
+            {enquiry.vesselName || enquiry.vessel?.name
+              ? ` · ${enquiry.vesselName || enquiry.vessel?.name}`
+              : ""}
+            {enquiry.deliveryPort ? ` · ${enquiry.deliveryPort}` : ""}
+            {" · "}
+            Received {formatDate(enquiry.receivedAt)}
+          </>
+        }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link href="/enquiries">All enquiries</Link>
+            </Button>
             <ExportButton entity="enquiry" query={{ id: enquiry.id }} label="Export Excel" />
             <StatusBadge status={enquiry.status} />
           </div>
         }
       />
 
-      <Panel className="mb-6 overflow-x-auto p-4">
-        <div className="flex min-w-[720px] items-center gap-1">
-          {PIPELINE_ORDER.map((s, i) => (
-            <div key={s} className="flex flex-1 items-center gap-1">
-              <div
-                className={cn(
-                  "h-2 flex-1 rounded-full",
-                  i <= statusIndex ? "bg-tss-steel animate-progress" : "bg-tss-border"
-                )}
-                title={statusLabel(s)}
-              />
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 text-xs text-tss-slate">
-          Current: {statusLabel(enquiry.status)} · Updated {formatDate(enquiry.updatedAt)}
-        </div>
-      </Panel>
-
-      <div className="mb-6">
-        <TransactionMonitor
-          enquiryId={enquiry.id}
-          steps={monitor.steps}
-          rfqRows={monitor.rfqRows}
-          timeline={monitor.timeline}
-          summary={monitor.summary}
-        />
-      </div>
-
-      <div className="mb-6">
-        <EnquiryEditor
-          enquiry={{
-            id: enquiry.id,
-            customerId: enquiry.customerId,
-            vesselId: enquiry.vesselId,
-            ownerId: enquiry.ownerId,
-            subject: enquiry.subject,
-            vesselName: enquiry.vesselName,
-            category: enquiry.category,
-            priority: enquiry.priority,
-            reference: enquiry.reference,
-            deliveryPort: enquiry.deliveryPort,
-            notes: enquiry.notes,
-            dueDate: enquiry.dueDate,
-            status: enquiry.status,
-            lines: plainLines,
-          }}
-          customers={customers}
-          users={users}
-          vessels={vessels}
-          canEditLines={canEditLines}
-        />
-      </div>
-
-      <div className="mb-6 grid gap-4 lg:grid-cols-3">
-        <Panel className="p-4 text-sm lg:col-span-2">
-          <h3 className="mb-3 text-sm font-semibold text-tss-navy">Snapshot</h3>
-          <dl className="grid gap-2 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs uppercase text-tss-slate">Subject</dt>
-              <dd>{enquiry.subject || "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-tss-slate">Reference</dt>
-              <dd>{enquiry.reference || "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-tss-slate">Delivery port</dt>
-              <dd>{enquiry.deliveryPort || "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-tss-slate">Owner</dt>
-              <dd>{enquiry.owner?.name || "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase text-tss-slate">Received</dt>
-              <dd>{formatDate(enquiry.receivedAt)}</dd>
-            </div>
-          </dl>
-        </Panel>
-        <Panel className="p-4 text-sm">
-          <h3 className="mb-3 text-sm font-semibold text-tss-navy">Documents</h3>
-          <ul className="space-y-2">
-            {enquiry.customerQuotes.map((q) => (
-              <li key={q.id}>
-                <Link className="text-tss-steel hover:underline" href={`/quotes/${q.id}`}>
-                  Quote {q.number}
-                </Link>
-                <span className="text-tss-slate"> · {q.status}</span>
-              </li>
-            ))}
-            {enquiry.purchaseOrders.map((po) => (
-              <li key={po.id} className="text-tss-slate">
-                Customer PO {po.number}
-                {po.customerPoRef ? ` (${po.customerPoRef})` : ""}
-              </li>
-            ))}
-            {enquiry.supplierPurchases.map((p) => (
-              <li key={p.id}>
-                <a
-                  className="text-tss-steel hover:underline"
-                  href={`/api/pdf/purchase/${p.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Purchase {p.number}
-                </a>
-                <span className="text-tss-slate"> · {p.supplier.name}</span>
-              </li>
-            ))}
-            {enquiry.rfqs.map((r) => (
-              <li key={r.id}>
-                <a
-                  className="text-tss-steel hover:underline"
-                  href={`/api/pdf/rfq/${r.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  RFQ {r.number}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      </div>
-
-      <Panel className="mb-6">
-        <div className="border-b border-tss-border px-4 py-3 text-sm font-semibold text-tss-navy">
-          Line items
-        </div>
-        <table className="w-full text-sm">
-          <thead className="bg-tss-steel-soft/40 text-left text-xs uppercase text-tss-slate">
-            <tr>
-              <th className="px-4 py-2">Part #</th>
-              <th className="px-4 py-2">IMPA</th>
-              <th className="px-4 py-2">Brand</th>
-              <th className="px-4 py-2">Description</th>
-              <th className="px-4 py-2">Qty</th>
-              <th className="px-4 py-2">Unit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {enquiry.lines.map((l) => (
-              <tr key={l.id} className="border-t border-tss-border/70">
-                <td className="px-4 py-2 font-mono text-xs">{l.partNumber}</td>
-                <td className="px-4 py-2 font-mono text-xs text-tss-slate">
-                  {l.impaCode || "—"}
-                </td>
-                <td className="px-4 py-2 text-tss-slate">{l.brand || "—"}</td>
-                <td className="px-4 py-2">{l.description}</td>
-                <td className="px-4 py-2">{decimalToNumber(l.quantity)}</td>
-                <td className="px-4 py-2">{l.unit}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
-
-      <div className="mb-6">
-        <AttachmentsPanel enquiryId={enquiry.id} attachments={enquiry.attachments} />
-      </div>
-
-      <div className="space-y-6">
-        <RfqPanel
-          enquiryId={enquiry.id}
-          suppliers={suppliers}
-          deliveryPort={enquiry.deliveryPort}
-          category={enquiry.category}
-          lines={plainLines}
-          rfqs={enquiry.rfqs.map((r) => ({
-            id: r.id,
-            number: r.number,
-            status: r.status,
-            supplier: { id: r.supplier.id, name: r.supplier.name },
-            quotes: r.quotes.map((q) => ({
-              id: q.id,
-              number: q.number,
-              currency: q.currency,
-              receivedAt: q.receivedAt,
-              leadTimeDays: q.leadTimeDays,
-              notes: q.notes,
-              lines: q.lines.map((l) => ({
-                id: l.id,
-                enquiryLineId: l.enquiryLineId,
-                partNumber: l.partNumber,
-                description: l.description,
-                quantity: decimalToNumber(l.quantity),
-                unitCost: decimalToNumber(l.unitCost),
-                currency: l.currency,
+      <EnquiryWorkspace
+        status={enquiry.status}
+        updatedAt={enquiry.updatedAt}
+        receivedAt={enquiry.receivedAt}
+        dueDate={enquiry.dueDate}
+        priority={enquiry.priority}
+        subject={enquiry.subject}
+        reference={enquiry.reference}
+        deliveryPort={enquiry.deliveryPort}
+        category={enquiry.category}
+        ownerName={enquiry.owner?.name || null}
+        customerName={enquiry.customer.name}
+        vesselName={enquiry.vesselName || enquiry.vessel?.name || null}
+        customerHref={`/customers/${enquiry.customerId}`}
+        lineCount={enquiry.lines.length}
+        rfqCount={enquiry.rfqs.length}
+        quoteCount={enquiry.customerQuotes.length}
+        quotedLineCount={quotedLineCount}
+        bestCostTotal={bestCostTotal}
+        currency={settings.defaultCurrency}
+        docs={docs}
+        editor={editor}
+        linesTable={linesTable}
+        attachments={
+          <AttachmentsPanel enquiryId={enquiry.id} attachments={enquiry.attachments} />
+        }
+        rfqPanel={
+          <RfqPanel
+            enquiryId={enquiry.id}
+            suppliers={suppliers}
+            deliveryPort={enquiry.deliveryPort}
+            category={enquiry.category}
+            lines={plainLines}
+            rfqs={enquiry.rfqs.map((r) => ({
+              id: r.id,
+              number: r.number,
+              status: r.status,
+              supplier: { id: r.supplier.id, name: r.supplier.name },
+              quotes: r.quotes.map((q) => ({
+                id: q.id,
+                number: q.number,
+                currency: q.currency,
+                receivedAt: q.receivedAt,
+                leadTimeDays: q.leadTimeDays,
+                notes: q.notes,
+                lines: q.lines.map((l) => ({
+                  id: l.id,
+                  enquiryLineId: l.enquiryLineId,
+                  partNumber: l.partNumber,
+                  description: l.description,
+                  quantity: decimalToNumber(l.quantity),
+                  unitCost: decimalToNumber(l.unitCost),
+                  currency: l.currency,
+                })),
               })),
-            })),
-          }))}
-        />
-
-        {supplierQuoteLines.length > 0 ? (
-          <>
-            <QuoteComparison
-              lines={plainLines}
-              supplierQuoteLines={supplierQuoteLines}
-            />
+            }))}
+          />
+        }
+        quoteComparison={
+          supplierQuoteLines.length > 0 ? (
+            <QuoteComparison lines={plainLines} supplierQuoteLines={supplierQuoteLines} />
+          ) : (
+            <Panel className="p-6 text-sm text-tss-slate">
+              No supplier costs yet. Send RFQs and log prices on the RFQ tab first.
+            </Panel>
+          )
+        }
+        quoteBuilder={
+          supplierQuoteLines.length > 0 ? (
             <QuoteBuilder
               enquiryId={enquiry.id}
               lines={plainLines}
               supplierQuoteLines={supplierQuoteLines}
               defaultMargin={decimalToNumber(settings.defaultMarginPct)}
             />
-          </>
-        ) : null}
-
-        <OrdersPanel
-          enquiryId={enquiry.id}
-          lines={plainLines}
-          suppliers={supplierCostMap}
-        />
-      </div>
+          ) : null
+        }
+        ordersPanel={
+          <OrdersPanel
+            enquiryId={enquiry.id}
+            lines={plainLines}
+            suppliers={supplierCostMap}
+          />
+        }
+        monitor={
+          <TransactionMonitor
+            enquiryId={enquiry.id}
+            steps={monitor.steps}
+            rfqRows={monitor.rfqRows}
+            timeline={monitor.timeline}
+            summary={monitor.summary}
+          />
+        }
+      />
     </div>
   );
 }

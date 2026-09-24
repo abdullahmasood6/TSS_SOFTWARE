@@ -139,7 +139,7 @@ export default async function EnquiriesPage({
         </form>
 
         <div className="flex flex-wrap gap-1">
-          {statuses.slice(0, 9).map((s) => {
+          {statuses.map((s) => {
             const active = (status || "ALL") === s;
             return (
               <Link
@@ -158,66 +158,85 @@ export default async function EnquiriesPage({
         </div>
       </div>
 
-      <Panel>
+      <Panel className="overflow-hidden">
+        <div className="border-b border-tss-border px-4 py-2.5 text-xs text-tss-slate">
+          {enquiries.length} result{enquiries.length === 1 ? "" : "s"}
+        </div>
         {enquiries.length === 0 ? (
           <EmptyState title="No enquiries" description="Create an enquiry to start the workflow." />
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-tss-steel-soft/50 text-left text-xs uppercase tracking-wide text-tss-slate">
-              <tr>
-                <th className="px-4 py-2">Number</th>
-                <th className="px-4 py-2">Customer</th>
-                <th className="px-4 py-2">Vessel / subject</th>
-                <th className="px-4 py-2">Owner</th>
-                <th className="px-4 py-2">Lines</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {enquiries.map((e) => (
-                <tr key={e.id} className="border-t border-tss-border/70 hover:bg-tss-steel-soft/30">
-                  <td className="px-4 py-2.5">
-                    <Link
-                      href={`/enquiries/${e.id}`}
-                      className="font-medium text-tss-steel hover:underline"
-                    >
-                      {e.number}
-                    </Link>
-                    {e.priority === "URGENT" ? (
-                      <Badge tone="danger" className="ml-1.5">
-                        Urgent
-                      </Badge>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <Link
-                      href={`/customers/${e.customerId}`}
-                      className="hover:underline"
-                    >
-                      {e.customer.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div>{e.vesselName || "—"}</div>
-                    <div className="text-xs text-tss-slate">
-                      {e.subject || ""}
-                      {e.deliveryPort ? ` · ${e.deliveryPort}` : ""}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-tss-slate">{e.owner?.name || "—"}</td>
-                  <td className="px-4 py-2.5">
-                    {e._count.lines}
-                    <span className="text-xs text-tss-slate"> / {e._count.rfqs} RFQ</span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <StatusBadge status={e.status} />
-                  </td>
-                  <td className="px-4 py-2.5 text-tss-slate">{formatDate(e.updatedAt)}</td>
+          <div className="overflow-x-auto">
+            <table className="tss-table min-w-[980px]">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Customer</th>
+                  <th>Vessel / port</th>
+                  <th>Owner</th>
+                  <th>Activity</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                  <th>Updated</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {enquiries.map((e) => {
+                  const isOverdue =
+                    !!e.dueDate &&
+                    e.dueDate.getTime() < Date.now() &&
+                    !["COMPLETED", "CANCELLED", "REJECTED"].includes(e.status);
+                  return (
+                    <tr key={e.id}>
+                      <td>
+                        <Link
+                          href={`/enquiries/${e.id}`}
+                          className="font-semibold text-tss-steel hover:underline"
+                        >
+                          {e.number}
+                        </Link>
+                        {e.priority === "URGENT" || e.priority === "HIGH" ? (
+                          <Badge tone="danger" className="ml-1.5">
+                            {e.priority}
+                          </Badge>
+                        ) : null}
+                        {e.subject ? (
+                          <div className="mt-0.5 max-w-[14rem] truncate text-xs text-tss-slate">
+                            {e.subject}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <Link href={`/customers/${e.customerId}`} className="hover:underline">
+                          {e.customer.name}
+                        </Link>
+                      </td>
+                      <td>
+                        <div>{e.vesselName || "—"}</div>
+                        <div className="text-xs text-tss-slate">{e.deliveryPort || "—"}</div>
+                      </td>
+                      <td className="text-tss-slate">{e.owner?.name || "—"}</td>
+                      <td className="text-xs text-tss-slate">
+                        {e._count.lines} lines · {e._count.rfqs} RFQs
+                      </td>
+                      <td
+                        className={
+                          isOverdue
+                            ? "text-xs font-semibold text-tss-danger"
+                            : "text-xs text-tss-slate"
+                        }
+                      >
+                        {e.dueDate ? formatDate(e.dueDate) : "—"}
+                      </td>
+                      <td>
+                        <StatusBadge status={e.status} />
+                      </td>
+                      <td className="text-tss-slate">{formatDate(e.updatedAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </Panel>
     </div>

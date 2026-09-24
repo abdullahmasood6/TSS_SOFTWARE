@@ -6,7 +6,7 @@ export function PageHeader({
   actions,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
   return (
@@ -17,9 +17,9 @@ export function PageHeader({
           {title}
         </h1>
         {description ? (
-          <p className="mt-1.5 max-w-2xl text-[0.925rem] leading-relaxed text-tss-slate">
+          <div className="mt-1.5 max-w-2xl text-[0.925rem] leading-relaxed text-tss-slate">
             {description}
-          </p>
+          </div>
         ) : null}
       </div>
       {actions ? (
