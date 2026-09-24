@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: northwharf-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: northwharf
+      POSTGRES_PASSWORD: northwharf_local_dev
+      POSTGRES_DB: northwharf
+    volumes:
+      - northwharf_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U northwharf -d northwharf"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  northwharf_pgdata:

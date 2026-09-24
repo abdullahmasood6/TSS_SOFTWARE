@@ -1,26 +1,181 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --tss-navy: #0a1c36;
+  --tss-navy-deep: #06101f;
+  --tss-steel: #1f6feb;
+  --tss-steel-mid: #3d84f0;
+  --tss-steel-soft: #eaf1fb;
+  --tss-slate: #5a6a7d;
+  --tss-ink: #0e1a2b;
+  --tss-surface: #eef2f7;
+  --tss-panel: #ffffff;
+  --tss-border: #d3dde9;
+  --tss-border-strong: #b8c6d8;
+  --tss-success: #0d7a52;
+  --tss-warning: #a65c08;
+  --tss-danger: #b42318;
+  --tss-mist: #dfe8f3;
+  --background: var(--tss-surface);
+  --foreground: var(--tss-ink);
+  --radius: 0.625rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-tss-navy: var(--tss-navy);
+  --color-tss-navy-deep: var(--tss-navy-deep);
+  --color-tss-steel: var(--tss-steel);
+  --color-tss-steel-mid: var(--tss-steel-mid);
+  --color-tss-steel-soft: var(--tss-steel-soft);
+  --color-tss-slate: var(--tss-slate);
+  --color-tss-ink: var(--tss-ink);
+  --color-tss-surface: var(--tss-surface);
+  --color-tss-panel: var(--tss-panel);
+  --color-tss-border: var(--tss-border);
+  --color-tss-border-strong: var(--tss-border-strong);
+  --color-tss-success: var(--tss-success);
+  --color-tss-warning: var(--tss-warning);
+  --color-tss-danger: var(--tss-danger);
+  --color-tss-mist: var(--tss-mist);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--tss-border);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(900px 420px at 8% -8%, rgba(31, 111, 235, 0.10), transparent 55%),
+    radial-gradient(700px 380px at 92% 0%, rgba(10, 28, 54, 0.06), transparent 50%),
+    linear-gradient(165deg, #f3f6fa 0%, var(--tss-surface) 42%, #e8eef5 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(31, 111, 235, 0.18);
+  color: var(--tss-navy);
+}
+
+.tss-grid-bg {
+  background-image:
+    linear-gradient(rgba(10, 28, 54, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 28, 54, 0.028) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.tss-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.tss-table thead {
+  background: linear-gradient(180deg, #f5f8fc 0%, #eef3f9 100%);
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tss-slate);
+}
+
+.tss-table th {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--tss-border);
+}
+
+.tss-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid rgba(211, 221, 233, 0.75);
+  vertical-align: middle;
+}
+
+.tss-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.tss-table tbody tr:hover {
+  background: rgba(234, 241, 251, 0.55);
+}
+
+.tss-kpi {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tss-kpi:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 111, 235, 0.28);
+  box-shadow: 0 8px 24px -16px rgba(10, 28, 54, 0.28);
+}
+
+.tss-kpi::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -40% auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(31, 111, 235, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progress-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-progress {
+  animation: progress-pulse 1.8s ease-in-out infinite;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out both;
 }
