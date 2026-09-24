@@ -2,8 +2,12 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/ui/panel";
 import { TemplatesManager } from "@/components/master/templates-manager";
 import { decimalToNumber } from "@/lib/utils";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function TemplatesPage() {
+  const session = await requirePermission("templates");
+  const canEdit = can(session.user.role, "templates.write");
+
   const [templates, parts] = await Promise.all([
     prisma.enquiryTemplate.findMany({
       where: { active: true },
@@ -30,7 +34,7 @@ export default async function TemplatesPage() {
         title="Enquiry templates"
         description="Reusable line sets for common vessel enquiries — IMPA and brand included."
       />
-      <TemplatesManager
+      <TemplatesManager canEdit={canEdit}
         templates={templates.map((t) => ({
           id: t.id,
           name: t.name,

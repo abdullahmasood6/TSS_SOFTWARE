@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import { ROLE_META } from "@/lib/permissions";
+import type { Role } from "@prisma/client";
 
 type StaffUser = {
   id: string;
@@ -81,161 +83,188 @@ export function UsersManager({
     });
   }
 
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-      <Panel>
-        <div className="flex items-center justify-between border-b border-tss-border px-4 py-3">
-          <h2 className="text-sm font-semibold text-tss-navy">Staff accounts</h2>
-          <Button type="button" size="sm" onClick={startCreate}>
-            Add user
-          </Button>
-        </div>
-        <table className="w-full text-sm">
-          <thead className="bg-tss-steel-soft/40 text-left text-xs uppercase text-tss-slate">
-            <tr>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Email</th>
-              <th className="px-4 py-2">Role</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-t border-tss-border/70">
-                <td className="px-4 py-2.5 font-medium">
-                  {u.name}
-                  {u.id === currentUserId ? (
-                    <span className="ml-1 text-xs text-tss-slate">(you)</span>
-                  ) : null}
-                </td>
-                <td className="px-4 py-2.5 text-tss-slate">{u.email}</td>
-                <td className="px-4 py-2.5">
-                  <Badge tone="info">{u.role}</Badge>
-                </td>
-                <td className="px-4 py-2.5">
-                  <Badge tone={u.active ? "success" : "neutral"}>
-                    {u.active ? "Active" : "Inactive"}
-                  </Badge>
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => startEdit(u)}>
-                    Edit
-                  </Button>
-                  {u.id !== currentUserId ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() =>
-                        startTransition(async () => {
-                          await setStaffUserActive(u.id, !u.active);
-                          router.refresh();
-                        })
-                      }
-                    >
-                      {u.active ? "Deactivate" : "Activate"}
-                    </Button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+  const selectedRole = ROLE_META[form.role as Role];
 
-      <Panel className="p-4">
-        <h2 className="mb-3 text-sm font-semibold text-tss-navy">
-          {editing ? "Edit user" : creating ? "New user" : "User details"}
-        </h2>
-        {(creating || editing) && (
-          <form onSubmit={onSave} className="space-y-3">
-            <div className="space-y-1">
-              <Label>Name</Label>
-              <Input
-                required
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {roles.map((r) => {
+          const meta = ROLE_META[r];
+          const count = users.filter((u) => u.role === r && u.active).length;
+          return (
+            <div key={r} className="rounded-lg border border-tss-border bg-white px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-tss-navy">{meta.label}</span>
+                <Badge tone="neutral">{count}</Badge>
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-tss-slate">{meta.summary}</p>
             </div>
-            {!editing ? (
+          );
+        })}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <Panel>
+          <div className="flex items-center justify-between border-b border-tss-border px-4 py-3">
+            <h2 className="text-sm font-semibold text-tss-navy">Staff accounts</h2>
+            <Button type="button" size="sm" onClick={startCreate}>
+              Add user
+            </Button>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="bg-tss-steel-soft/40 text-left text-xs uppercase text-tss-slate">
+              <tr>
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Email</th>
+                <th className="px-4 py-2">Role</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="border-t border-tss-border/70">
+                  <td className="px-4 py-2.5 font-medium">
+                    {u.name}
+                    {u.id === currentUserId ? (
+                      <span className="ml-1 text-xs text-tss-slate">(you)</span>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-2.5 text-tss-slate">{u.email}</td>
+                  <td className="px-4 py-2.5">
+                    <Badge tone="info">{ROLE_META[u.role as Role]?.label || u.role}</Badge>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge tone={u.active ? "success" : "neutral"}>
+                      {u.active ? "Active" : "Inactive"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <Button type="button" size="sm" variant="ghost" onClick={() => startEdit(u)}>
+                      Edit
+                    </Button>
+                    {u.id !== currentUserId ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() =>
+                          startTransition(async () => {
+                            await setStaffUserActive(u.id, !u.active);
+                            router.refresh();
+                          })
+                        }
+                      >
+                        {u.active ? "Deactivate" : "Activate"}
+                      </Button>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
+
+        <Panel className="p-4">
+          <h2 className="mb-3 text-sm font-semibold text-tss-navy">
+            {editing ? "Edit user" : creating ? "New user" : "User details"}
+          </h2>
+          {(creating || editing) && (
+            <form onSubmit={onSave} className="space-y-3">
               <div className="space-y-1">
-                <Label>Email</Label>
+                <Label>Name</Label>
                 <Input
-                  type="email"
                   required
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 />
               </div>
-            ) : (
+              {!editing ? (
+                <div className="space-y-1">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label>Email</Label>
+                  <Input value={form.email} disabled />
+                </div>
+              )}
               <div className="space-y-1">
-                <Label>Email</Label>
-                <Input value={form.email} disabled />
-              </div>
-            )}
-            <div className="space-y-1">
-              <Label>Role</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-tss-border bg-white px-3 text-sm"
-                value={form.role}
-                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-              >
-                {roles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {editing ? (
-              <div className="space-y-1">
-                <Label>Active</Label>
+                <Label>Role</Label>
                 <select
                   className="flex h-9 w-full rounded-md border border-tss-border bg-white px-3 text-sm"
-                  value={form.active}
-                  onChange={(e) => setForm((f) => ({ ...f, active: e.target.value }))}
-                  disabled={editing.id === currentUserId}
+                  value={form.role}
+                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                 >
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
+                  {roles.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_META[r].label}
+                    </option>
+                  ))}
                 </select>
+                {selectedRole ? (
+                  <p className="mt-1 text-[11px] leading-snug text-tss-slate">
+                    {selectedRole.summary}
+                  </p>
+                ) : null}
               </div>
-            ) : null}
-            <div className="space-y-1">
-              <Label>{editing ? "Reset password (optional)" : "Temporary password"}</Label>
-              <Input
-                type="password"
-                required={!editing}
-                minLength={editing ? undefined : 8}
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder={editing ? "Leave blank to keep" : "Min 8 characters"}
-              />
-            </div>
-            {error ? <p className="text-sm text-tss-danger">{error}</p> : null}
-            <div className="flex gap-2">
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setCreating(false);
-                  setEditing(null);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        )}
-        {!creating && !editing ? (
-          <p className="text-sm text-tss-slate">Select Edit or Add user to manage staff access.</p>
-        ) : null}
-      </Panel>
+              {editing ? (
+                <div className="space-y-1">
+                  <Label>Active</Label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-tss-border bg-white px-3 text-sm"
+                    value={form.active}
+                    onChange={(e) => setForm((f) => ({ ...f, active: e.target.value }))}
+                    disabled={editing.id === currentUserId}
+                  >
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              ) : null}
+              <div className="space-y-1">
+                <Label>{editing ? "Reset password (optional)" : "Temporary password"}</Label>
+                <Input
+                  type="password"
+                  required={!editing}
+                  minLength={editing ? undefined : 8}
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder={editing ? "Leave blank to keep" : "Min 8 characters"}
+                />
+              </div>
+              {error ? <p className="text-sm text-tss-danger">{error}</p> : null}
+              <div className="flex gap-2">
+                <Button type="submit" disabled={pending}>
+                  {pending ? "Saving…" : "Save"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setCreating(false);
+                    setEditing(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+          {!creating && !editing ? (
+            <p className="text-sm text-tss-slate">
+              Select Edit or Add user to assign Admin, Sales, Procurement, or Viewer access.
+            </p>
+          ) : null}
+        </Panel>
+      </div>
     </div>
   );
 }

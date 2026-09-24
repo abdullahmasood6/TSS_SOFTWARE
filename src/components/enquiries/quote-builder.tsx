@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import { decimalToNumber, formatMoney, formatDate } from "@/lib/utils";
 
@@ -43,11 +44,13 @@ export function QuoteBuilder({
   lines,
   supplierQuoteLines,
   defaultMargin,
+  canEdit = true,
 }: {
   enquiryId: string;
   lines: Line[];
   supplierQuoteLines: SupplierQuoteLine[];
   defaultMargin: number;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -151,6 +154,14 @@ export function QuoteBuilder({
     const sell = sellPrices[l.id];
     return prev != null && sell != null && sell <= prev;
   });
+
+  if (!canEdit) {
+    return (
+      <Panel className="p-4">
+        <RoleNotice message="Sales owns customer quotes. Your role can compare costs but not create quotes." />
+      </Panel>
+    );
+  }
 
   return (
     <Panel className="p-4">

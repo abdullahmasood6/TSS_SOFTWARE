@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/permissions";
+import { requirePermission, can } from "@/lib/permissions";
 import { PageHeader } from "@/components/ui/panel";
 import { InvoicesManager } from "./invoices-manager";
 
 export default async function InvoicesPage() {
-  await requireSession();
+  const session = await requirePermission("invoices");
+  const canEdit = can(session.user.role, "invoices.write");
   const [purchases, invoices, suppliers] = await Promise.all([
     prisma.supplierPurchase.findMany({
       where: { status: { in: ["SENT", "CONFIRMED", "SHIPPED", "RECEIVED", "CLOSED"] } },
@@ -35,6 +36,7 @@ export default async function InvoicesPage() {
         description="Goods receipt, supplier e-invoices, and three-way matching against purchase orders."
       />
       <InvoicesManager
+        canEdit={canEdit}
         purchases={purchases.map((p) => ({
           id: p.id,
           number: p.number,

@@ -4,12 +4,14 @@ import { PageHeader, Panel, EmptyState } from "@/components/ui/panel";
 import { StatusBadge } from "@/lib/status";
 import { formatMoney, decimalToNumber, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { requireSession } from "@/lib/permissions";
 
 export default async function SearchPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requireSession();
   const { q } = await searchParams;
   const query = (q || "").trim();
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { DocumentEventType, EnquiryStatus, PriceHistoryType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { nextDocumentNumber, getCompanySettings } from "@/lib/documents";
-import { requireSession, canSales, canProcurement, canWrite } from "@/lib/permissions";
+import { requireSession, assertCan } from "@/lib/permissions";
 import { getPartPriceIntel, isUnderquote, recordPriceHistory } from "@/lib/pricing";
 import { logDocumentEvent } from "@/lib/document-events";
 import { decimalToNumber } from "@/lib/utils";
@@ -12,9 +12,7 @@ import { z } from "zod";
 
 export async function createEnquiry(formData: FormData) {
   const session = await requireSession();
-  if (!canSales(session.user.role)) {
-    throw new Error("Unauthorized");
-  }
+  assertCan(session.user.role, "enquiries.write");
 
   const customerId = String(formData.get("customerId") || "");
   const vesselId = String(formData.get("vesselId") || "").trim() || null;
@@ -105,9 +103,7 @@ export async function createEnquiry(formData: FormData) {
 
 export async function sendRfqs(enquiryId: string, supplierIds: string[]) {
   const session = await requireSession();
-  if (!canProcurement(session.user.role)) {
-    throw new Error("Unauthorized");
-  }
+  assertCan(session.user.role, "rfq.write");
   if (!supplierIds.length) throw new Error("Select at least one supplier");
 
   const enquiry = await prisma.enquiry.findUnique({
@@ -162,9 +158,7 @@ export async function sendRfqs(enquiryId: string, supplierIds: string[]) {
 
 export async function logSupplierQuote(formData: FormData) {
   const session = await requireSession();
-  if (!canProcurement(session.user.role)) {
-    throw new Error("Unauthorized");
-  }
+  assertCan(session.user.role, "rfq.write");
 
   const rfqId = String(formData.get("rfqId") || "");
   const currency = String(formData.get("currency") || "USD");
@@ -260,9 +254,7 @@ export async function logSupplierQuote(formData: FormData) {
 
 export async function createCustomerQuote(formData: FormData) {
   const session = await requireSession();
-  if (!canSales(session.user.role)) {
-    throw new Error("Unauthorized");
-  }
+  assertCan(session.user.role, "quotes.write");
 
   const enquiryId = String(formData.get("enquiryId") || "");
   const marginPct = Number(formData.get("marginPct") || 15);
@@ -379,6 +371,7 @@ export async function createCustomerQuote(formData: FormData) {
 
 export async function markQuoteSent(quoteId: string) {
   const session = await requireSession();
+  assertCan(session.user.role, "quotes.write");
   const quote = await prisma.customerQuote.update({
     where: { id: quoteId },
     data: { status: "SENT", sentAt: new Date(), updatedById: session.user.id },
@@ -402,6 +395,7 @@ export async function markQuoteSent(quoteId: string) {
 
 export async function setQuoteApproval(quoteId: string, approved: boolean) {
   const session = await requireSession();
+  assertCan(session.user.role, "quotes.approve");
   const quote = await prisma.customerQuote.update({
     where: { id: quoteId },
     data: {
@@ -423,6 +417,7 @@ export async function setQuoteApproval(quoteId: string, approved: boolean) {
 
 export async function createPurchaseOrder(formData: FormData) {
   const session = await requireSession();
+  assertCan(session.user.role, "orders.customer_po");
   const enquiryId = String(formData.get("enquiryId") || "");
   const customerPoRef = String(formData.get("customerPoRef") || "");
   const notes = String(formData.get("notes") || "");
@@ -454,9 +449,7 @@ export async function createPurchaseOrder(formData: FormData) {
 
 export async function createSupplierPurchase(formData: FormData) {
   const session = await requireSession();
-  if (!canProcurement(session.user.role)) {
-    throw new Error("Unauthorized");
-  }
+  assertCan(session.user.role, "orders.purchase");
 
   const enquiryId = String(formData.get("enquiryId") || "");
   const supplierId = String(formData.get("supplierId") || "");
@@ -524,6 +517,7 @@ export async function createSupplierPurchase(formData: FormData) {
 
 export async function completeEnquiry(enquiryId: string) {
   const session = await requireSession();
+  assertCan(session.user.role, "orders.purchase");
   const enquiry = await prisma.enquiry.findUnique({
     where: { id: enquiryId },
     include: { customerQuotes: { include: { lines: true } } },
@@ -561,7 +555,7 @@ export async function completeEnquiry(enquiryId: string) {
 
 export async function updateSettings(formData: FormData) {
   const session = await requireSession();
-  if (session.user.role !== "ADMIN") throw new Error("Unauthorized");
+  assertCan(session.user.role, "settings.company");
 
   const settings = await getCompanySettings();
   await prisma.companySettings.update({
@@ -600,7 +594,7 @@ export async function getPriceIntelAction(partNumber: string) {
 
 export async function updateEnquiryDetails(enquiryId: string, formData: FormData) {
   const session = await requireSession();
-  if (!canSales(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "enquiries.write");
 
   const customerId = String(formData.get("customerId") || "");
   const vesselId = String(formData.get("vesselId") || "").trim() || null;
@@ -662,7 +656,7 @@ export async function updateEnquiryDetails(enquiryId: string, formData: FormData
 
 export async function replaceEnquiryLines(enquiryId: string, formData: FormData) {
   const session = await requireSession();
-  if (!canSales(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "enquiries.write");
 
   const enquiry = await prisma.enquiry.findUnique({
     where: { id: enquiryId },
@@ -727,7 +721,7 @@ export async function replaceEnquiryLines(enquiryId: string, formData: FormData)
 
 export async function cancelEnquiry(enquiryId: string) {
   const session = await requireSession();
-  if (!canSales(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "enquiries.write");
   await prisma.enquiry.update({
     where: { id: enquiryId },
     data: { status: EnquiryStatus.CANCELLED, updatedById: session.user.id },
@@ -739,7 +733,7 @@ export async function cancelEnquiry(enquiryId: string) {
 
 export async function updateCustomerQuote(quoteId: string, formData: FormData) {
   const session = await requireSession();
-  if (!canSales(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "quotes.write");
 
   const quote = await prisma.customerQuote.findUnique({
     where: { id: quoteId },
@@ -798,9 +792,7 @@ export async function updateCustomerQuote(quoteId: string, formData: FormData) {
 
 export async function updatePurchaseOrderNotes(poId: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) {
-    throw new Error("Unauthorized");
-  }
+  assertCan(session.user.role, "orders.customer_po");
   await prisma.purchaseOrder.update({
     where: { id: poId },
     data: {
@@ -813,7 +805,7 @@ export async function updatePurchaseOrderNotes(poId: string, formData: FormData)
 
 export async function updateSupplierPurchaseStatus(purchaseId: string, status: string) {
   const session = await requireSession();
-  if (!canProcurement(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "orders.purchase");
   await prisma.supplierPurchase.update({
     where: { id: purchaseId },
     data: { status },

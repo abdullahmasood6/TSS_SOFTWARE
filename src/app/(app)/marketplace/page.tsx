@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/permissions";
+import { requirePermission } from "@/lib/permissions";
 import { PageHeader, Panel, EmptyState } from "@/components/ui/panel";
 import { Badge } from "@/components/ui/badge";
 
@@ -9,7 +9,7 @@ export default async function MarketplacePage({
 }: {
   searchParams: Promise<{ q?: string; port?: string; kind?: string; category?: string }>;
 }) {
-  await requireSession();
+  await requirePermission("marketplace");
   const sp = await searchParams;
   const q = sp.q?.trim() || "";
   const port = sp.port?.trim() || "";

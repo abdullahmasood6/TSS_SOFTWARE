@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatMoney, decimalToNumber } from "@/lib/utils";
 import Link from "next/link";
@@ -48,15 +49,24 @@ function toInputDate(d: Date | null) {
 export function OrdersManager({
   purchaseOrders,
   purchases,
+  canEditPo = false,
+  canEditPurchase = false,
 }: {
   purchaseOrders: Po[];
   purchases: Purchase[];
+  canEditPo?: boolean;
+  canEditPurchase?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="grid gap-6 xl:grid-cols-2">
+      {!canEditPo && !canEditPurchase ? (
+        <div className="xl:col-span-2">
+          <RoleNotice message="Your role is read-only on orders. Sales can edit customer POs; procurement can update supplier shipments." />
+        </div>
+      ) : null}
       <Panel>
         <div className="border-b border-tss-border px-4 py-3 text-sm font-semibold text-tss-navy">
           Customer purchase orders
@@ -82,6 +92,7 @@ export function OrdersManager({
                   className="grid gap-2 md:grid-cols-[1fr_1fr_auto]"
                   onSubmit={(e) => {
                     e.preventDefault();
+                    if (!canEditPo) return;
                     const fd = new FormData(e.currentTarget);
                     startTransition(async () => {
                       await updatePurchaseOrderNotes(po.id, fd);
@@ -91,17 +102,19 @@ export function OrdersManager({
                 >
                   <div className="space-y-1">
                     <Label>Customer PO ref</Label>
-                    <Input name="customerPoRef" defaultValue={po.customerPoRef || ""} />
+                    <Input name="customerPoRef" defaultValue={po.customerPoRef || ""} disabled={!canEditPo} />
                   </div>
                   <div className="space-y-1">
                     <Label>Notes</Label>
-                    <Input name="notes" defaultValue={po.notes || ""} />
+                    <Input name="notes" defaultValue={po.notes || ""} disabled={!canEditPo} />
                   </div>
-                  <div className="flex items-end">
-                    <Button type="submit" size="sm" disabled={pending}>
-                      Save
-                    </Button>
-                  </div>
+                  {canEditPo ? (
+                    <div className="flex items-end">
+                      <Button type="submit" size="sm" disabled={pending}>
+                        Save
+                      </Button>
+                    </div>
+                  ) : null}
                 </form>
               </div>
             ))
@@ -151,6 +164,7 @@ export function OrdersManager({
                     className="grid gap-2 sm:grid-cols-2"
                     onSubmit={(e) => {
                       e.preventDefault();
+                      if (!canEditPurchase) return;
                       const fd = new FormData(e.currentTarget);
                       startTransition(async () => {
                         await updateShipment(p.id, fd);
@@ -158,6 +172,7 @@ export function OrdersManager({
                       });
                     }}
                   >
+                    <fieldset disabled={!canEditPurchase} className="contents">
                     <div className="space-y-1">
                       <Label>Status</Label>
                       <select
@@ -194,11 +209,14 @@ export function OrdersManager({
                       <Label>ETA</Label>
                       <Input name="eta" type="date" defaultValue={toInputDate(p.eta)} />
                     </div>
-                    <div className="sm:col-span-2">
-                      <Button type="submit" size="sm" disabled={pending}>
-                        Save shipment
-                      </Button>
-                    </div>
+                    </fieldset>
+                    {canEditPurchase ? (
+                      <div className="sm:col-span-2">
+                        <Button type="submit" size="sm" disabled={pending}>
+                          Save shipment
+                        </Button>
+                      </div>
+                    ) : null}
                   </form>
                 </div>
               );

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/permissions";
+import { requirePermission, can } from "@/lib/permissions";
 import { PageHeader, Panel, EmptyState } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/lib/status";
@@ -21,7 +21,8 @@ export default async function EnquiriesPage({
     owner?: string;
   }>;
 }) {
-  const session = await requireSession();
+  const session = await requirePermission("enquiries.view");
+  const canCreate = can(session.user.role, "enquiries.write");
   const { q, status, mine, priority, owner } = await searchParams;
   const users = await prisma.user.findMany({
     where: { active: true },
@@ -81,9 +82,11 @@ export default async function EnquiriesPage({
         actions={
           <div className="flex gap-2">
             <ExportButton entity="enquiries" query={{ q, status }} />
-            <Button asChild>
-              <Link href="/enquiries/new">New enquiry</Link>
-            </Button>
+            {canCreate ? (
+              <Button asChild>
+                <Link href="/enquiries/new">New enquiry</Link>
+              </Button>
+            ) : null}
           </div>
         }
       />

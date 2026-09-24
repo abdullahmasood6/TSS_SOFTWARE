@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireSession, canWrite } from "@/lib/permissions";
+import { requireSession, assertCan } from "@/lib/permissions";
 import { z } from "zod";
 
 function emptyToUndef(v: FormDataEntryValue | null) {
@@ -36,7 +36,7 @@ function parseCustomer(formData: FormData) {
 
 export async function createCustomer(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "customers.write");
   const data = parseCustomer(formData);
   await prisma.customer.create({
     data: {
@@ -55,7 +55,7 @@ export async function createCustomer(formData: FormData) {
 
 export async function updateCustomer(id: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "customers.write");
   const data = parseCustomer(formData);
   await prisma.customer.update({
     where: { id },
@@ -75,7 +75,7 @@ export async function updateCustomer(id: string, formData: FormData) {
 
 export async function setCustomerActive(id: string, active: boolean) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "customers.write");
   await prisma.customer.update({ where: { id }, data: { active } });
   revalidatePath("/customers");
 }
@@ -115,7 +115,7 @@ function parseSupplier(formData: FormData) {
 
 export async function createSupplier(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "suppliers.write");
   const data = parseSupplier(formData);
   await prisma.supplier.create({
     data: {
@@ -138,7 +138,7 @@ export async function createSupplier(formData: FormData) {
 
 export async function updateSupplier(id: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "suppliers.write");
   const data = parseSupplier(formData);
   await prisma.supplier.update({
     where: { id },
@@ -162,7 +162,7 @@ export async function updateSupplier(id: string, formData: FormData) {
 
 export async function setSupplierActive(id: string, active: boolean) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "suppliers.write");
   await prisma.supplier.update({ where: { id }, data: { active } });
   revalidatePath("/suppliers");
 }
@@ -193,7 +193,7 @@ function parsePart(formData: FormData) {
 
 export async function createPart(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "catalog.write");
   const data = parsePart(formData);
   await prisma.part.create({
     data: {
@@ -212,7 +212,7 @@ export async function createPart(formData: FormData) {
 
 export async function updatePart(id: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "catalog.write");
   const data = parsePart(formData);
   await prisma.part.update({
     where: { id },
@@ -232,7 +232,7 @@ export async function updatePart(id: string, formData: FormData) {
 
 export async function setPartActive(id: string, active: boolean) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "catalog.write");
   await prisma.part.update({ where: { id }, data: { active } });
   revalidatePath("/catalog");
 }

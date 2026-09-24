@@ -5,17 +5,45 @@ Internal supply-chain operations platform for enquiry → supplier RFQ → custo
 ## Stack
 
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS
-- PostgreSQL 16 (Docker Compose)
+- PostgreSQL 16 (Docker Compose locally; Neon recommended in production)
 - Prisma ORM
-- NextAuth (credentials, role-based)
+- NextAuth (credentials, role-based access)
 - PDFKit for branded RFQ / quote / purchase PDFs
+
+## Roles
+
+| Role | Focus |
+|---|---|
+| **Admin** | Full access — users, company settings, every workflow stage |
+| **Sales** | Enquiries, customer quotes, approvals, customer POs, customers, vessels, templates |
+| **Procurement** | RFQs, supplier costs, purchases, invoices, payments, contracts, supplier KYC, catalog |
+| **Viewer** | Read-only across modules — no create/edit actions |
+
+Sidebar, pages, and server actions are gated by a permission matrix in `src/lib/permissions.ts`. Unauthorized actions redirect to `/unauthorized` or throw on the server.
+
+Assign roles under **Settings → Staff accounts** (admin only).
+
+## Production checklist
+
+Before going live:
+
+1. **Secrets** — Set strong `AUTH_SECRET`, `DATABASE_URL`, and `SEED_PASSWORD` (or disable seeding). Never commit `.env`.
+2. **Database** — Use a managed Postgres (e.g. Neon). Run `npx prisma migrate deploy` on deploy; seed only for demos.
+3. **Auth URL** — Set `AUTH_URL` / `NEXTAUTH_URL` to the production hostname.
+4. **HTTPS & host** — Deploy on Vercel (or similar) with a stable custom domain; force HTTPS.
+5. **Uploads** — Enquiry attachments write to local `uploads/`. For multi-instance production, move to S3/R2 or similar object storage.
+6. **Backups** — Enable automated DB backups and test restore.
+7. **Staff accounts** — Create real users with least-privilege roles; deactivate seed accounts; force password changes.
+8. **Observability** — Add error monitoring (e.g. Sentry) and uptime checks.
+9. **Legal / ops** — Confirm document prefixes, company details, and margin defaults in Settings.
+10. **Access review** — Periodically audit who has Admin vs Sales vs Procurement.
 
 ## Prerequisites
 
 - Node.js 20+
-- Docker Desktop (for Postgres)
+- Docker Desktop (for local Postgres)
 
-> **Note:** This project maps Postgres to host port **5433** to avoid clashing with a local Postgres already on 5432.
+> **Note:** Local Docker maps Postgres to host port **5433** to avoid clashing with a Postgres already on 5432.
 
 ## Quick start
 
@@ -40,7 +68,17 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Staff accounts are created by the seed script. Ask your admin for login details — credentials are not published in this README.
+### Demo logins
+
+After `npm run db:seed`, use any of these (password = value of `SEED_PASSWORD` in `.env`):
+
+| Role | Email |
+|---|---|
+| Admin | `admin@northwharf.example` |
+| Sales | `sales@northwharf.example` |
+| Procurement | `procurement@northwharf.example` |
+| Viewer | `viewer@northwharf.example` |
+| Sales (ops) | `ops@northwharf.example` |
 
 Seed data includes part **1234** previously quoted at **$10**, plus a sample enquiry with supplier quotes ready for customer quote building.
 

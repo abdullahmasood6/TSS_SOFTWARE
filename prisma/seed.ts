@@ -1875,8 +1875,13 @@ async function main() {
     ],
   });
 
-  console.log("Seed complete.");
-  console.log("Staff accounts created (see your admin for credentials).");
+  console.log("Seed complete.\n");
+  console.log("Demo logins (password = SEED_PASSWORD from .env):");
+  console.log("  Admin        admin@northwharf.example");
+  console.log("  Sales        sales@northwharf.example");
+  console.log("  Procurement  procurement@northwharf.example");
+  console.log("  Viewer       viewer@northwharf.example");
+  console.log("  Sales (ops)  ops@northwharf.example");
 }
 
 main()

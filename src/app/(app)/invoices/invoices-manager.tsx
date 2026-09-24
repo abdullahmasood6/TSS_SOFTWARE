@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, decimalToNumber, formatDate } from "@/lib/utils";
 
@@ -56,10 +57,12 @@ export function InvoicesManager({
   purchases,
   invoices,
   suppliers,
+  canEdit = true,
 }: {
   purchases: PurchaseOption[];
   invoices: InvoiceRow[];
   suppliers: { id: string; name: string }[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -126,6 +129,10 @@ export function InvoicesManager({
 
   return (
     <div className="space-y-6">
+      {!canEdit ? (
+        <RoleNotice message="Your role can view invoices and match status but not post receipts or invoices." />
+      ) : null}
+      {canEdit ? (
       <Panel className="p-4">
         <h3 className="mb-3 text-sm font-semibold text-tss-navy">
           Goods receipt & e-invoice (SeaProc / PortProcure)
@@ -182,6 +189,7 @@ export function InvoicesManager({
         )}
         {error ? <p className="mt-2 text-sm text-tss-danger">{error}</p> : null}
       </Panel>
+      ) : null}
 
       <Panel className="overflow-hidden p-0">
         <div className="border-b border-tss-border px-4 py-3 text-sm font-semibold text-tss-navy">
@@ -221,20 +229,22 @@ export function InvoicesManager({
                 </td>
                 <td className="px-4 py-2.5">{inv.status}</td>
                 <td className="px-4 py-2.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={pending}
-                    onClick={() =>
-                      startTransition(async () => {
-                        await rematchInvoice(inv.id);
-                        router.refresh();
-                      })
-                    }
-                  >
-                    Rematch
-                  </Button>
+                  {canEdit ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={pending}
+                      onClick={() =>
+                        startTransition(async () => {
+                          await rematchInvoice(inv.id);
+                          router.refresh();
+                        })
+                      }
+                    >
+                      Rematch
+                    </Button>
+                  ) : null}
                 </td>
               </tr>
             ))}

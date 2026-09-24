@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireSession, canWrite } from "@/lib/permissions";
+import { requireSession, assertCan } from "@/lib/permissions";
 
 export async function createVessel(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "vessels.write");
 
   await prisma.vessel.create({
     data: {
@@ -25,7 +25,7 @@ export async function createVessel(formData: FormData) {
 
 export async function updateVessel(id: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "vessels.write");
 
   await prisma.vessel.update({
     where: { id },
@@ -45,7 +45,7 @@ export async function updateVessel(id: string, formData: FormData) {
 
 export async function updateShipment(purchaseId: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "orders.purchase");
 
   const status = String(formData.get("status") || "").trim();
   const trackingNo = String(formData.get("trackingNo") || "").trim() || null;

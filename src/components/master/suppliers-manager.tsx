@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 
 type Supplier = {
   id: string;
@@ -47,7 +48,7 @@ const emptyForm = {
   notes: "",
 };
 
-export function SuppliersManager({ suppliers }: { suppliers: Supplier[] }) {
+export function SuppliersManager({ suppliers, canEdit = true }: { suppliers: Supplier[]; canEdit?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<Supplier | null>(null);
@@ -133,23 +134,27 @@ export function SuppliersManager({ suppliers }: { suppliers: Supplier[] }) {
                   <Button asChild size="sm" variant="ghost">
                     <Link href={`/suppliers/${s.id}`}>Open</Link>
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => startEdit(s)}>
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={pending}
-                    onClick={() =>
-                      startTransition(async () => {
-                        await setSupplierActive(s.id, !s.active);
-                        router.refresh();
-                      })
-                    }
-                  >
-                    {s.active ? "Deactivate" : "Activate"}
-                  </Button>
+                  {canEdit ? (
+                    <>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => startEdit(s)}>
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() =>
+                          startTransition(async () => {
+                            await setSupplierActive(s.id, !s.active);
+                            router.refresh();
+                          })
+                        }
+                      >
+                        {s.active ? "Deactivate" : "Activate"}
+                      </Button>
+                    </>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -158,17 +163,20 @@ export function SuppliersManager({ suppliers }: { suppliers: Supplier[] }) {
       </Panel>
 
       <Panel className="p-4">
+        {!canEdit ? (
+          <RoleNotice message="Your role can view suppliers but not create or edit them." />
+        ) : null}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-tss-navy">
             {editing ? "Edit supplier" : "Add supplier"}
           </h2>
-          {!creating && !editing ? (
+          {canEdit && !creating && !editing ? (
             <Button type="button" size="sm" onClick={startCreate}>
               New
             </Button>
           ) : null}
         </div>
-        {(creating || editing) && (
+        {canEdit && (creating || editing) && (
           <form onSubmit={onSave} className="space-y-3">
             <div className="space-y-1">
               <Label>Name</Label>
@@ -268,7 +276,7 @@ export function SuppliersManager({ suppliers }: { suppliers: Supplier[] }) {
             </div>
           </form>
         )}
-        {!creating && !editing ? (
+        {canEdit && !creating && !editing ? (
           <p className="text-sm text-tss-slate">Select Edit on a row, or click New.</p>
         ) : null}
       </Panel>

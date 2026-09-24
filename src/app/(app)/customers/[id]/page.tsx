@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/lib/status";
 import { formatDate, formatMoney, decimalToNumber } from "@/lib/utils";
+import { requirePermission } from "@/lib/permissions";
 
 export default async function CustomerDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePermission("customers");
   const { id } = await params;
   const customer = await prisma.customer.findUnique({
     where: { id },

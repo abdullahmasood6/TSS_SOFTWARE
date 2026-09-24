@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { decimalToNumber, formatMoney } from "@/lib/utils";
 
 type Line = {
@@ -27,12 +28,14 @@ export function QuoteEditor({
   notes,
   marginPct,
   lines,
+  canEdit = true,
 }: {
   quoteId: string;
   status: string;
   notes: string | null;
   marginPct: number;
   lines: Line[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -72,6 +75,14 @@ export function QuoteEditor({
         setError(err instanceof Error ? err.message : "Failed");
       }
     });
+  }
+
+  if (!canEdit) {
+    return (
+      <Panel className="mb-4 p-4">
+        <RoleNotice message="Sales can edit draft quote prices. Your role is view-only." />
+      </Panel>
+    );
   }
 
   return (

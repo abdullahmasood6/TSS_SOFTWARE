@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
@@ -29,9 +30,11 @@ type Vessel = {
 export function VesselsManager({
   vessels,
   customers,
+  canEdit = true,
 }: {
   vessels: Vessel[];
   customers: { id: string; name: string }[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -95,12 +98,14 @@ export function VesselsManager({
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 text-right">
-                  <Button type="button" size="sm" variant="ghost" onClick={() => {
-                    setCreating(false);
-                    setEditing(v);
-                  }}>
-                    Edit
-                  </Button>
+                  {canEdit ? (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => {
+                      setCreating(false);
+                      setEditing(v);
+                    }}>
+                      Edit
+                    </Button>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -109,17 +114,20 @@ export function VesselsManager({
       </Panel>
 
       <Panel className="p-4">
+        {!canEdit ? (
+          <RoleNotice message="Your role can view vessels but not create or edit them." />
+        ) : null}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-tss-navy">
             {editing ? "Edit vessel" : "Add vessel"}
           </h2>
-          {!creating && !editing ? (
+          {canEdit && !creating && !editing ? (
             <Button type="button" size="sm" onClick={() => { setEditing(null); setCreating(true); }}>
               New
             </Button>
           ) : null}
         </div>
-        {(creating || editing) && (
+        {canEdit && (creating || editing) && (
           <form onSubmit={onSave} className="space-y-3">
             <div className="space-y-1">
               <Label>Name</Label>
@@ -185,7 +193,7 @@ export function VesselsManager({
             </div>
           </form>
         )}
-        {!creating && !editing ? (
+        {canEdit && !creating && !editing ? (
           <p className="text-sm text-tss-slate">Select Edit or click New to manage vessels.</p>
         ) : null}
       </Panel>

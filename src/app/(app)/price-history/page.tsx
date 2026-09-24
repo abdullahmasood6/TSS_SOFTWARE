@@ -6,6 +6,7 @@ import { ExportButton } from "@/components/ui/export-button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatMoney, decimalToNumber } from "@/lib/utils";
 import { PriceHistoryType } from "@prisma/client";
+import { requirePermission } from "@/lib/permissions";
 
 export default async function PriceHistoryPage({
   searchParams,
@@ -13,6 +14,7 @@ export default async function PriceHistoryPage({
   searchParams: Promise<{ q?: string; type?: string }>;
 }) {
   const { q, type } = await searchParams;
+  await requirePermission("price_history");
   const rows = await prisma.priceHistory.findMany({
     where: {
       ...(type && type !== "ALL" ? { type: type as PriceHistoryType } : {}),

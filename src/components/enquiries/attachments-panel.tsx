@@ -25,9 +25,11 @@ type AttachmentRow = {
 export function AttachmentsPanel({
   enquiryId,
   attachments,
+  canEdit = true,
 }: {
   enquiryId: string;
   attachments: AttachmentRow[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -46,6 +48,7 @@ export function AttachmentsPanel({
       </div>
 
       <div className="space-y-3 p-4">
+        {canEdit ? (
         <form
           ref={formRef}
           className="grid gap-3 rounded-md border border-dashed border-tss-border bg-tss-surface/40 p-3 md:grid-cols-[1fr_1.2fr_auto]"
@@ -74,6 +77,7 @@ export function AttachmentsPanel({
             </Button>
           </div>
         </form>
+        ) : null}
 
         {attachments.length === 0 ? (
           <p className="text-sm text-tss-slate">No attachments yet.</p>
@@ -98,20 +102,22 @@ export function AttachmentsPanel({
                     {formatBytes(a.sizeBytes)} · {formatDate(a.createdAt)}
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(async () => {
-                      await deleteEnquiryAttachment(a.id);
-                      router.refresh();
-                    })
-                  }
-                >
-                  <Trash2 className="h-4 w-4 text-tss-danger" />
-                </Button>
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        await deleteEnquiryAttachment(a.id);
+                        router.refresh();
+                      })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4 text-tss-danger" />
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>

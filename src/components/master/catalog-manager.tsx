@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { formatMoney, formatDate } from "@/lib/utils";
 import Link from "next/link";
 
@@ -37,7 +38,7 @@ const emptyForm = {
   notes: "",
 };
 
-export function CatalogManager({ parts }: { parts: PartRow[] }) {
+export function CatalogManager({ parts, canEdit = true }: { parts: PartRow[]; canEdit?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<PartRow | null>(null);
@@ -136,6 +137,8 @@ export function CatalogManager({ parts }: { parts: PartRow[] }) {
                   </Badge>
                 </td>
                 <td className="px-4 py-2.5 text-right">
+                  {canEdit ? (
+                    <>
                   <Button type="button" size="sm" variant="ghost" onClick={() => startEdit(p)}>
                     Edit
                   </Button>
@@ -153,6 +156,8 @@ export function CatalogManager({ parts }: { parts: PartRow[] }) {
                   >
                     {p.active ? "Deactivate" : "Activate"}
                   </Button>
+                    </>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -165,13 +170,16 @@ export function CatalogManager({ parts }: { parts: PartRow[] }) {
           <h2 className="text-sm font-semibold text-tss-navy">
             {editing ? "Edit part" : "Add part"}
           </h2>
-          {!creating && !editing ? (
+          {canEdit && !creating && !editing ? (
             <Button type="button" size="sm" onClick={startCreate}>
               New
             </Button>
           ) : null}
         </div>
-        {(creating || editing) && (
+        {!canEdit ? (
+          <RoleNotice message="Your role can browse the catalog but not change parts." />
+        ) : null}
+        {canEdit && (creating || editing) && (
           <form onSubmit={onSave} className="space-y-3">
             <div className="space-y-1">
               <Label>Part number</Label>

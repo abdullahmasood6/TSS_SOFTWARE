@@ -24,12 +24,19 @@ type SupplierCompliance = {
   brandsServed: string | null;
 };
 
-export function SupplierComplianceForm({ supplier }: { supplier: SupplierCompliance }) {
+export function SupplierComplianceForm({
+  supplier,
+  canEdit = true,
+}: {
+  supplier: SupplierCompliance;
+  canEdit?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!canEdit) return;
     const fd = new FormData(e.currentTarget);
     fd.set("complianceHold", fd.get("complianceHold") ? "true" : "false");
     startTransition(async () => {
@@ -42,6 +49,7 @@ export function SupplierComplianceForm({ supplier }: { supplier: SupplierComplia
     <Panel className="p-4">
       <h3 className="mb-3 text-sm font-semibold text-tss-navy">KYC & marketplace profile</h3>
       <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
+        <fieldset disabled={!canEdit} className="contents">
         <div>
           <Label>Kind</Label>
           <select
@@ -123,11 +131,18 @@ export function SupplierComplianceForm({ supplier }: { supplier: SupplierComplia
           />
           Compliance hold (blocks payments)
         </label>
-        <div>
-          <Button type="submit" disabled={pending}>
-            Save compliance
-          </Button>
-        </div>
+        </fieldset>
+        {canEdit ? (
+          <div>
+            <Button type="submit" disabled={pending}>
+              Save compliance
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-tss-slate md:col-span-2">
+            Only procurement or admin can update KYC and compliance.
+          </p>
+        )}
       </form>
     </Panel>
   );

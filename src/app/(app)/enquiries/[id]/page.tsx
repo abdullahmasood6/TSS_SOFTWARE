@@ -19,12 +19,21 @@ import { ExportButton } from "@/components/ui/export-button";
 import { StatusBadge } from "@/lib/status";
 import { buildTransactionMonitor } from "@/lib/transaction-monitor";
 import { Button } from "@/components/ui/button";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function EnquiryDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await requirePermission("enquiries.view");
+  const role = session.user.role;
+  const canEditEnquiry = can(role, "enquiries.write");
+  const canRfq = can(role, "rfq.write");
+  const canQuote = can(role, "quotes.write");
+  const canCreatePo = can(role, "orders.customer_po");
+  const canCreatePurchase = can(role, "orders.purchase");
+
   const { id } = await params;
   const [enquiry, suppliers, settings, customers, users, vessels] = await Promise.all([
     prisma.enquiry.findUnique({
@@ -173,7 +182,8 @@ export default async function EnquiryDetailPage({
       customers={customers}
       users={users}
       vessels={vessels}
-      canEditLines={canEditLines}
+      canEditLines={canEditLines && canEditEnquiry}
+      canEdit={canEditEnquiry}
     />
   );
 
@@ -272,7 +282,11 @@ export default async function EnquiryDetailPage({
         editor={editor}
         linesTable={linesTable}
         attachments={
-          <AttachmentsPanel enquiryId={enquiry.id} attachments={enquiry.attachments} />
+          <AttachmentsPanel
+            enquiryId={enquiry.id}
+            attachments={enquiry.attachments}
+            canEdit={canEditEnquiry}
+          />
         }
         rfqPanel={
           <RfqPanel
@@ -281,6 +295,7 @@ export default async function EnquiryDetailPage({
             deliveryPort={enquiry.deliveryPort}
             category={enquiry.category}
             lines={plainLines}
+            canEdit={canRfq}
             rfqs={enquiry.rfqs.map((r) => ({
               id: r.id,
               number: r.number,
@@ -322,6 +337,7 @@ export default async function EnquiryDetailPage({
               lines={plainLines}
               supplierQuoteLines={supplierQuoteLines}
               defaultMargin={decimalToNumber(settings.defaultMarginPct)}
+              canEdit={canQuote}
             />
           ) : null
         }
@@ -330,6 +346,8 @@ export default async function EnquiryDetailPage({
             enquiryId={enquiry.id}
             lines={plainLines}
             suppliers={supplierCostMap}
+            canCreatePo={canCreatePo}
+            canCreatePurchase={canCreatePurchase}
           />
         }
         monitor={

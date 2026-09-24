@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/ui/panel";
 import { ExportButton } from "@/components/ui/export-button";
 import { SearchBar } from "@/components/ui/search-bar";
 import { SuppliersManager } from "@/components/master/suppliers-manager";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function SuppliersPage({
   searchParams,
@@ -10,6 +11,8 @@ export default async function SuppliersPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+  const session = await requirePermission("suppliers");
+  const canEdit = can(session.user.role, "suppliers.write");
   const suppliers = await prisma.supplier.findMany({
     where: q
       ? {
@@ -33,7 +36,7 @@ export default async function SuppliersPage({
       <div className="mb-4">
         <SearchBar defaultValue={q} placeholder="Search suppliers…" />
       </div>
-      <SuppliersManager suppliers={suppliers} />
+      <SuppliersManager suppliers={suppliers} canEdit={canEdit} />
     </div>
   );
 }

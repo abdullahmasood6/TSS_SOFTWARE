@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { EnquiryStatus } from "@prisma/client";
 import { Plus, Trash2 } from "lucide-react";
 import { decimalToNumber } from "@/lib/utils";
@@ -35,6 +36,7 @@ export function EnquiryEditor({
   users,
   vessels,
   canEditLines,
+  canEdit = true,
 }: {
   enquiry: {
     id: string;
@@ -65,6 +67,7 @@ export function EnquiryEditor({
   users: { id: string; name: string }[];
   vessels: { id: string; name: string; customerId: string | null }[];
   canEditLines: boolean;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -121,6 +124,20 @@ export function EnquiryEditor({
         setError(err instanceof Error ? err.message : "Failed");
       }
     });
+  }
+
+  if (!canEdit) {
+    return (
+      <Panel className="p-4">
+        <RoleNotice message="Your role cannot edit enquiry details." />
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <div><dt className="text-xs text-tss-slate">Subject</dt><dd>{enquiry.subject || "—"}</dd></div>
+          <div><dt className="text-xs text-tss-slate">Status</dt><dd>{enquiry.status}</dd></div>
+          <div><dt className="text-xs text-tss-slate">Port</dt><dd>{enquiry.deliveryPort || "—"}</dd></div>
+          <div><dt className="text-xs text-tss-slate">Priority</dt><dd>{enquiry.priority}</dd></div>
+        </dl>
+      </Panel>
+    );
   }
 
   return (

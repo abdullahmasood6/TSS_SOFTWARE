@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, decimalToNumber, formatDate } from "@/lib/utils";
 import type { ContractStatus } from "@prisma/client";
@@ -31,10 +32,12 @@ export function ContractsManager({
   contracts,
   suppliers,
   ports,
+  canEdit = true,
 }: {
   contracts: ContractRow[];
   suppliers: { id: string; name: string }[];
   ports: { id: string; name: string; code: string }[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -68,13 +71,18 @@ export function ContractsManager({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button type="button" onClick={() => setOpen((v) => !v)}>
-          {open ? "Cancel" : "New contract / tender"}
-        </Button>
-      </div>
+      {!canEdit ? (
+        <RoleNotice message="Your role can view contracts but not create or change status." />
+      ) : null}
+      {canEdit ? (
+        <div className="flex justify-end">
+          <Button type="button" onClick={() => setOpen((v) => !v)}>
+            {open ? "Cancel" : "New contract / tender"}
+          </Button>
+        </div>
+      ) : null}
 
-      {open ? (
+      {canEdit && open ? (
         <Panel className="p-4">
           <form onSubmit={onCreate} className="grid gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
@@ -183,17 +191,17 @@ export function ContractsManager({
                   </div>
                 </td>
                 <td className="space-x-1 px-4 py-2.5">
-                  {c.status === "DRAFT" || c.status === "OPEN" ? (
+                  {canEdit && (c.status === "DRAFT" || c.status === "OPEN") ? (
                     <Button size="sm" variant="outline" disabled={pending} onClick={() => setStatus(c.id, "AWARDED")}>
                       Award
                     </Button>
                   ) : null}
-                  {c.status === "AWARDED" ? (
+                  {canEdit && c.status === "AWARDED" ? (
                     <Button size="sm" disabled={pending} onClick={() => setStatus(c.id, "ACTIVE")}>
                       Activate
                     </Button>
                   ) : null}
-                  {c.status !== "CANCELLED" && c.status !== "EXPIRED" ? (
+                  {canEdit && c.status !== "CANCELLED" && c.status !== "EXPIRED" ? (
                     <Button size="sm" variant="ghost" disabled={pending} onClick={() => setStatus(c.id, "CANCELLED")}>
                       Cancel
                     </Button>

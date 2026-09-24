@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 
 type Customer = {
   id: string;
@@ -39,7 +40,7 @@ const empty: Omit<Customer, "id" | "active"> = {
   notes: "",
 };
 
-export function CustomersManager({ customers }: { customers: Customer[] }) {
+export function CustomersManager({ customers, canEdit = true }: { customers: Customer[]; canEdit?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -147,17 +148,18 @@ export function CustomersManager({ customers }: { customers: Customer[] }) {
       </Panel>
 
       <Panel className="p-4">
+        {!canEdit ? <RoleNotice message="Your role can view customers but not create or edit them." /> : null}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-tss-navy">
             {editing ? "Edit customer" : "Add customer"}
           </h2>
-          {!creating && !editing ? (
+          {canEdit && !creating && !editing ? (
             <Button type="button" size="sm" onClick={startCreate}>
               New
             </Button>
           ) : null}
         </div>
-        {(creating || editing) && (
+        {canEdit && (creating || editing) && (
           <form onSubmit={onSave} className="space-y-3">
             <div className="space-y-1">
               <Label>Name</Label>
@@ -239,8 +241,11 @@ export function CustomersManager({ customers }: { customers: Customer[] }) {
             </div>
           </form>
         )}
-        {!creating && !editing ? (
+        {canEdit && !creating && !editing ? (
           <p className="text-sm text-tss-slate">Select Edit on a row, or click New to add a customer.</p>
+        ) : null}
+        {!canEdit ? (
+          <p className="text-sm text-tss-slate">Browse the list for customer details. Contact an admin or sales user to make changes.</p>
         ) : null}
       </Panel>
     </div>

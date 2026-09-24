@@ -5,6 +5,7 @@ import { formatDate, formatMoney, decimalToNumber } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/ui/export-button";
 import { SearchBar } from "@/components/ui/search-bar";
+import { requirePermission } from "@/lib/permissions";
 
 const STATUSES = ["ALL", "DRAFT", "SENT", "APPROVED", "REJECTED"] as const;
 
@@ -14,6 +15,7 @@ export default async function QuotesPage({
   searchParams: Promise<{ q?: string; status?: string }>;
 }) {
   const { q, status } = await searchParams;
+  await requirePermission("quotes.view");
   const quotes = await prisma.customerQuote.findMany({
     where: {
       ...(status && status !== "ALL" ? { status } : {}),

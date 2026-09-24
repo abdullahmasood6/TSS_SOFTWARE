@@ -6,6 +6,7 @@ import { statusLabel } from "@/lib/status";
 import { BarChart, FunnelChart, TrendChart } from "@/components/reports/charts";
 import { Button } from "@/components/ui/button";
 import type { EnquiryStatus } from "@prisma/client";
+import { requirePermission } from "@/lib/permissions";
 
 function ReportTable({
   title,
@@ -84,6 +85,7 @@ export default async function ReportsPage({
   searchParams: Promise<{ from?: string; to?: string; range?: string }>;
 }) {
   const sp = await searchParams;
+  await requirePermission("reports");
 
   const today = new Date();
   const defaultFrom = new Date(

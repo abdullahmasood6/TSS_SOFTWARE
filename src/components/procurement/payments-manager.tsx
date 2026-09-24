@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney, decimalToNumber, formatDate } from "@/lib/utils";
 import type { PaymentStatus } from "@prisma/client";
@@ -40,10 +41,12 @@ export function PaymentsManager({
   invoices,
   payments,
   suppliers,
+  canEdit = true,
 }: {
   invoices: InvoiceOpt[];
   payments: PaymentRow[];
   suppliers: { id: string; name: string; kycStatus: string; complianceHold: boolean }[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -87,6 +90,10 @@ export function PaymentsManager({
 
   return (
     <div className="space-y-6">
+      {!canEdit ? (
+        <RoleNotice message="Your role can view payments but not create or settle them." />
+      ) : null}
+      {canEdit ? (
       <Panel className="p-4">
         <h3 className="mb-3 text-sm font-semibold text-tss-navy">
           Settlement (Marcura-style KYC gate)
@@ -162,6 +169,7 @@ export function PaymentsManager({
         </form>
         {error ? <p className="mt-2 text-sm text-tss-danger">{error}</p> : null}
       </Panel>
+      ) : null}
 
       <Panel className="overflow-hidden p-0">
         <div className="border-b border-tss-border px-4 py-3 text-sm font-semibold text-tss-navy">
@@ -214,7 +222,7 @@ export function PaymentsManager({
                   ) : null}
                 </td>
                 <td className="px-4 py-2.5 space-x-1">
-                  {p.status !== "AUTHORIZED" && p.status !== "SETTLED" ? (
+                  {canEdit && p.status !== "AUTHORIZED" && p.status !== "SETTLED" ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -224,7 +232,7 @@ export function PaymentsManager({
                       Authorize
                     </Button>
                   ) : null}
-                  {p.status !== "SETTLED" ? (
+                  {canEdit && p.status !== "SETTLED" ? (
                     <Button
                       size="sm"
                       disabled={pending}

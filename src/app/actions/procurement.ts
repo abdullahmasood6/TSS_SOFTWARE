@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireSession, canWrite } from "@/lib/permissions";
+import { requireSession, assertCan } from "@/lib/permissions";
 import { nextDocumentNumber } from "@/lib/documents";
 import { threeWayMatch } from "@/lib/invoice-match";
 import { decimalToNumber } from "@/lib/utils";
@@ -15,7 +15,7 @@ function empty(v: FormDataEntryValue | null) {
 
 export async function updateSupplierCompliance(id: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "suppliers.compliance");
 
   const kycStatus = String(formData.get("kycStatus") || "PENDING") as KycStatus;
   const kind = String(formData.get("kind") || "SUPPLIER") as MarketplaceKind;
@@ -46,7 +46,7 @@ export async function updateSupplierCompliance(id: string, formData: FormData) {
 
 export async function createGoodsReceipt(purchaseId: string, formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "invoices.write");
 
   const purchase = await prisma.supplierPurchase.findUnique({
     where: { id: purchaseId },
@@ -118,7 +118,7 @@ export async function createGoodsReceipt(purchaseId: string, formData: FormData)
 
 export async function createSupplierInvoice(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "invoices.write");
 
   const purchaseId = empty(formData.get("purchaseId"));
   const supplierId = String(formData.get("supplierId") || "");
@@ -214,7 +214,7 @@ export async function createSupplierInvoice(formData: FormData) {
 
 export async function rematchInvoice(invoiceId: string) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "invoices.write");
 
   const invoice = await prisma.supplierInvoice.findUnique({
     where: { id: invoiceId },
@@ -252,7 +252,7 @@ export async function rematchInvoice(invoiceId: string) {
 
 export async function createPayment(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "payments.write");
 
   const supplierId = String(formData.get("supplierId") || "");
   const invoiceId = empty(formData.get("invoiceId"));
@@ -302,7 +302,7 @@ export async function createPayment(formData: FormData) {
 
 export async function updatePaymentStatus(id: string, status: PaymentStatus) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "payments.write");
 
   const payment = await prisma.payment.findUnique({ where: { id } });
   if (!payment) throw new Error("Payment not found");
@@ -338,7 +338,7 @@ export async function updatePaymentStatus(id: string, status: PaymentStatus) {
 
 export async function createContract(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "contracts.write");
 
   const title = String(formData.get("title") || "").trim();
   if (!title) throw new Error("Title required");
@@ -376,7 +376,7 @@ export async function createContract(formData: FormData) {
 
 export async function updateContractStatus(id: string, status: ContractStatus) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "contracts.write");
   await prisma.contract.update({ where: { id }, data: { status } });
   revalidatePath("/contracts");
 }

@@ -8,12 +8,16 @@ import { formatDate, formatMoney, decimalToNumber } from "@/lib/utils";
 import { markQuoteSent, setQuoteApproval } from "@/app/actions/workflow";
 import { QuoteEditor } from "@/components/quotes/quote-editor";
 import { ExportButton } from "@/components/ui/export-button";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function QuoteDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await requirePermission("quotes.view");
+  const canEditQuote = can(session.user.role, "quotes.write");
+  const canApprove = can(session.user.role, "quotes.approve");
   const { id } = await params;
   const quote = await prisma.customerQuote.findUnique({
     where: { id },
@@ -67,15 +71,16 @@ export default async function QuoteDetailPage({
         notes={quote.notes}
         marginPct={decimalToNumber(quote.marginPct)}
         lines={quote.lines}
+        canEdit={canEditQuote}
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        {quote.status === "DRAFT" ? (
+        {canEditQuote && quote.status === "DRAFT" ? (
           <form action={sendAction}>
             <Button type="submit">Mark sent to customer</Button>
           </form>
         ) : null}
-        {quote.status === "SENT" || quote.status === "DRAFT" ? (
+        {canApprove && (quote.status === "SENT" || quote.status === "DRAFT") ? (
           <>
             <form action={approveAction}>
               <Button type="submit" variant="steel">

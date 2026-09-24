@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/ui/panel";
 import { EnquiryForm } from "@/components/enquiries/enquiry-form";
+import { requirePermission } from "@/lib/permissions";
 
 export default async function NewEnquiryPage() {
+  await requirePermission("enquiries.write");
   const [customers, parts, vessels, templates] = await Promise.all([
     prisma.customer.findMany({ orderBy: { name: "asc" } }),
     prisma.part.findMany({

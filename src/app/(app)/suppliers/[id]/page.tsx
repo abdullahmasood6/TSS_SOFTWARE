@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatMoney, decimalToNumber } from "@/lib/utils";
 import { SupplierComplianceForm } from "@/components/master/supplier-compliance-form";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function SupplierDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await requirePermission("suppliers");
+  const canCompliance = can(session.user.role, "suppliers.compliance");
   const { id } = await params;
   const supplier = await prisma.supplier.findUnique({
     where: { id },
@@ -193,7 +196,7 @@ export default async function SupplierDetailPage({
       </div>
 
       <div className="mb-6">
-        <SupplierComplianceForm supplier={supplier} />
+        <SupplierComplianceForm supplier={supplier} canEdit={canCompliance} />
       </div>
 
       <Panel>

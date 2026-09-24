@@ -4,6 +4,7 @@ import { ExportButton } from "@/components/ui/export-button";
 import { SearchBar } from "@/components/ui/search-bar";
 import { OrdersManager } from "@/components/orders/orders-manager";
 import { decimalToNumber } from "@/lib/utils";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function OrdersPage({
   searchParams,
@@ -11,6 +12,9 @@ export default async function OrdersPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+  const session = await requirePermission("orders.view");
+  const canEditPo = can(session.user.role, "orders.customer_po");
+  const canEditPurchase = can(session.user.role, "orders.purchase");
   const filter = q
     ? {
         OR: [
@@ -59,6 +63,8 @@ export default async function OrdersPage({
         <SearchBar defaultValue={q} placeholder="Search PO #, customer, tracking, port…" />
       </div>
       <OrdersManager
+        canEditPo={canEditPo}
+        canEditPurchase={canEditPurchase}
         purchaseOrders={purchaseOrders.map((po) => ({
           id: po.id,
           number: po.number,

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import { decimalToNumber, formatMoney } from "@/lib/utils";
 import { rankSuppliers, type RecommendSupplier } from "@/lib/recommend";
@@ -43,6 +44,7 @@ export function RfqPanel({
   rfqs,
   deliveryPort,
   category,
+  canEdit = true,
 }: {
   enquiryId: string;
   suppliers: RecommendSupplier[];
@@ -50,6 +52,7 @@ export function RfqPanel({
   rfqs: Rfq[];
   deliveryPort?: string | null;
   category?: string | null;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -126,7 +129,10 @@ export function RfqPanel({
   }
 
   return (
+    <>
+    {!canEdit ? <RoleNotice message="Procurement owns RFQs and supplier costs. Your role is view-only here." /> : null}
     <div className="space-y-4">
+      {canEdit ? (
       <Panel className="p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-tss-navy">Send RFQs to suppliers</h3>
@@ -173,10 +179,14 @@ export function RfqPanel({
           Record RFQs sent
         </Button>
       </Panel>
+      ) : null}
 
       {rfqs.length > 0 ? (
         <Panel className="p-4">
-          <h3 className="mb-3 text-sm font-semibold text-tss-navy">Log supplier prices</h3>
+          <h3 className="mb-3 text-sm font-semibold text-tss-navy">
+            {canEdit ? "Log supplier prices" : "Supplier RFQs & prices"}
+          </h3>
+          {canEdit ? (
           <form onSubmit={saveQuote} className="space-y-3">
             <div className="grid gap-3 md:grid-cols-3">
               <div className="space-y-1">
@@ -236,6 +246,7 @@ export function RfqPanel({
               Save supplier quote
             </Button>
           </form>
+          ) : null}
 
           <div className="mt-6 space-y-3">
             {rfqs.map((r) => (
@@ -261,5 +272,6 @@ export function RfqPanel({
 
       {error ? <p className="text-sm text-tss-danger">{error}</p> : null}
     </div>
+    </>
   );
 }

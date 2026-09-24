@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/permissions";
+import { requirePermission, can } from "@/lib/permissions";
 import { PageHeader } from "@/components/ui/panel";
 import { PaymentsManager } from "@/components/procurement/payments-manager";
 
 export default async function PaymentsPage() {
-  await requireSession();
+  const session = await requirePermission("payments");
+  const canEdit = can(session.user.role, "payments.write");
   const [invoices, payments, suppliers] = await Promise.all([
     prisma.supplierInvoice.findMany({
       where: { status: { not: "PAID" } },
@@ -35,7 +36,7 @@ export default async function PaymentsPage() {
         title="Payments"
         description="Authorize and settle supplier payments with KYC / compliance gates."
       />
-      <PaymentsManager invoices={invoices} payments={payments} suppliers={suppliers} />
+      <PaymentsManager invoices={invoices} payments={payments} suppliers={suppliers} canEdit={canEdit} />
     </div>
   );
 }

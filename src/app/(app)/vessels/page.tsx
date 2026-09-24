@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/ui/panel";
 import { SearchBar } from "@/components/ui/search-bar";
 import { VesselsManager } from "@/components/master/vessels-manager";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function VesselsPage({
   searchParams,
@@ -9,6 +10,8 @@ export default async function VesselsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+  const session = await requirePermission("vessels");
+  const canEdit = can(session.user.role, "vessels.write");
   const [vessels, customers] = await Promise.all([
     prisma.vessel.findMany({
       where: q
@@ -38,7 +41,7 @@ export default async function VesselsPage({
       <div className="mb-4">
         <SearchBar defaultValue={q} placeholder="Search vessel, IMO, engine…" />
       </div>
-      <VesselsManager vessels={vessels} customers={customers} />
+      <VesselsManager vessels={vessels} customers={customers} canEdit={canEdit} />
     </div>
   );
 }

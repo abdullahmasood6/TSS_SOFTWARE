@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -50,9 +51,11 @@ type Line = {
 export function TemplatesManager({
   templates,
   parts,
+  canEdit = true,
 }: {
   templates: Template[];
   parts: PartOption[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -142,13 +145,18 @@ export function TemplatesManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button type="button" size="sm" onClick={() => setCreating((v) => !v)}>
-          {creating ? "Close" : "New template"}
-        </Button>
-      </div>
+      {!canEdit ? (
+        <RoleNotice message="Your role can view templates but not create or delete them." />
+      ) : null}
+      {canEdit ? (
+        <div className="flex justify-end">
+          <Button type="button" size="sm" onClick={() => setCreating((v) => !v)}>
+            {creating ? "Close" : "New template"}
+          </Button>
+        </div>
+      ) : null}
 
-      {creating ? (
+      {canEdit && creating ? (
         <Panel className="p-4">
           <form onSubmit={onCreate} className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
@@ -275,20 +283,22 @@ export function TemplatesManager({
               </div>
               <div className="flex items-center gap-2">
                 {t.category ? <Badge tone="neutral">{t.category}</Badge> : null}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(async () => {
-                      await deleteEnquiryTemplate(t.id);
-                      router.refresh();
-                    })
-                  }
-                >
-                  <Trash2 className="h-4 w-4 text-tss-danger" />
-                </Button>
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        await deleteEnquiryTemplate(t.id);
+                        router.refresh();
+                      })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4 text-tss-danger" />
+                  </Button>
+                ) : null}
               </div>
             </div>
             <ul className="space-y-1 text-sm">

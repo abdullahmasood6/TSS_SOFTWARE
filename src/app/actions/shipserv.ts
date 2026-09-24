@@ -7,7 +7,7 @@ import { randomUUID } from "crypto";
 import { DocumentEventType } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireSession, canWrite, canSales } from "@/lib/permissions";
+import { requireSession, assertCan } from "@/lib/permissions";
 import { logDocumentEvent } from "@/lib/document-events";
 import { nextDocumentNumber } from "@/lib/documents";
 import { EnquiryStatus } from "@prisma/client";
@@ -20,7 +20,7 @@ async function ensureUploadDir() {
 
 export async function createEnquiryTemplate(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "templates.write");
 
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim() || null;
@@ -68,7 +68,7 @@ export async function createEnquiryTemplate(formData: FormData) {
 
 export async function deleteEnquiryTemplate(id: string) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "templates.write");
   await prisma.enquiryTemplate.delete({ where: { id } });
   revalidatePath("/templates");
   revalidatePath("/enquiries/new");
@@ -76,7 +76,7 @@ export async function deleteEnquiryTemplate(id: string) {
 
 export async function createEnquiryFromTemplate(formData: FormData) {
   const session = await requireSession();
-  if (!canSales(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "enquiries.write");
 
   const templateId = String(formData.get("templateId") || "");
   const customerId = String(formData.get("customerId") || "");
@@ -147,7 +147,7 @@ export async function createEnquiryFromTemplate(formData: FormData) {
 
 export async function uploadEnquiryAttachment(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "enquiries.write");
 
   const enquiryId = String(formData.get("enquiryId") || "");
   const label = String(formData.get("label") || "").trim() || null;
@@ -190,7 +190,7 @@ export async function uploadEnquiryAttachment(formData: FormData) {
 
 export async function deleteEnquiryAttachment(id: string) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "enquiries.write");
 
   const attachment = await prisma.attachment.findUnique({ where: { id } });
   if (!attachment) throw new Error("Not found");
@@ -209,7 +209,7 @@ export async function deleteEnquiryAttachment(id: string) {
 
 export async function addDocumentNote(formData: FormData) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "enquiries.write");
 
   const enquiryId = String(formData.get("enquiryId") || "");
   const label = String(formData.get("label") || "").trim();
@@ -230,7 +230,7 @@ export async function addDocumentNote(formData: FormData) {
 
 export async function markRfqOpened(rfqId: string) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "rfq.write");
 
   const rfq = await prisma.supplierRfq.update({
     where: { id: rfqId },
@@ -255,7 +255,7 @@ export async function markRfqOpened(rfqId: string) {
 
 export async function markRfqAcknowledged(rfqId: string) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "rfq.write");
 
   const rfq = await prisma.supplierRfq.findUnique({
     where: { id: rfqId },
@@ -277,7 +277,7 @@ export async function markRfqAcknowledged(rfqId: string) {
 
 export async function setRfqDueDate(rfqId: string, dueAt: string | null) {
   const session = await requireSession();
-  if (!canWrite(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "rfq.write");
 
   const rfq = await prisma.supplierRfq.update({
     where: { id: rfqId },

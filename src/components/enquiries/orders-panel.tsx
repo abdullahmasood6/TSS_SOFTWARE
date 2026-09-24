@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel } from "@/components/ui/panel";
+import { RoleNotice } from "@/components/ui/role-notice";
 import { decimalToNumber, formatMoney } from "@/lib/utils";
 
 type Line = {
@@ -32,10 +33,14 @@ export function OrdersPanel({
   enquiryId,
   lines,
   suppliers,
+  canCreatePo = false,
+  canCreatePurchase = false,
 }: {
   enquiryId: string;
   lines: Line[];
   suppliers: SupplierOption[];
+  canCreatePo?: boolean;
+  canCreatePurchase?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -88,6 +93,10 @@ export function OrdersPanel({
 
   return (
     <div className="space-y-4">
+      {!canCreatePo && !canCreatePurchase ? (
+        <RoleNotice message="Sales records customer POs; procurement creates supplier purchases. Your role is view-only here." />
+      ) : null}
+      {canCreatePo ? (
       <Panel className="p-4">
         <h3 className="mb-3 text-sm font-semibold text-tss-navy">Customer purchase order</h3>
         <form onSubmit={onPo} className="grid gap-3 md:grid-cols-2">
@@ -104,7 +113,9 @@ export function OrdersPanel({
           </Button>
         </form>
       </Panel>
+      ) : null}
 
+      {canCreatePurchase ? (
       <Panel className="p-4">
         <h3 className="mb-3 text-sm font-semibold text-tss-navy">Send purchase to supplier</h3>
         <div className="mb-3 space-y-1">
@@ -153,6 +164,7 @@ export function OrdersPanel({
           </Button>
         </div>
       </Panel>
+      ) : null}
       {error ? <p className="text-sm text-tss-danger">{error}</p> : null}
     </div>
   );

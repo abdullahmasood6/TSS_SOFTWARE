@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/permissions";
+import { requirePermission, can, ROLE_META } from "@/lib/permissions";
+import { RoleFocusBanner } from "@/components/ui/role-notice";
 import {
   getWorkQueueCounts,
   statusesForTab,
@@ -15,6 +16,86 @@ import { ExportButton } from "@/components/ui/export-button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, FolderOpen, Clock } from "lucide-react";
+import { Role } from "@prisma/client";
+
+function roleDashboardConfig(role: Role) {
+  const meta = ROLE_META[role];
+  if (role === Role.SALES) {
+    return {
+      title: "Sales work queue",
+      description: "Focus: enquiries, customer quotes, approvals, and customer POs.",
+      kpiKeys: ["readyToQuote", "awaitingApproval", "unconfirmedPo", "overdue"] as const,
+      tabIds: [
+        "in-process",
+        "overdue",
+        "ready-to-quote",
+        "awaiting-approval",
+        "unconfirmed-po",
+      ] as WorkQueueTab[],
+      shortcuts: [
+        { href: "/enquiries/new", label: "New enquiry" },
+        { href: "/quotes", label: "Customer quotes" },
+        { href: "/customers", label: "Customers" },
+        { href: "/orders", label: "Customer POs" },
+      ],
+    };
+  }
+  if (role === Role.PROCUREMENT) {
+    return {
+      title: "Procurement work queue",
+      description: "Focus: RFQs, supplier costs, purchases, invoices, and settlement.",
+      kpiKeys: ["needsRfq", "awaitingSupplier", "confirmedPo", "overdue"] as const,
+      tabIds: [
+        "in-process",
+        "overdue",
+        "needs-rfq",
+        "awaiting-supplier",
+        "confirmed-po",
+      ] as WorkQueueTab[],
+      shortcuts: [
+        { href: "/enquiries", label: "Open enquiries" },
+        { href: "/suppliers", label: "Suppliers / KYC" },
+        { href: "/invoices", label: "Invoices & GRN" },
+        { href: "/payments", label: "Payments" },
+        { href: "/contracts", label: "Contracts" },
+      ],
+    };
+  }
+  if (role === Role.VIEWER) {
+    return {
+      title: "Operations overview",
+      description: "Read-only view — you can browse documents but cannot create or edit.",
+      kpiKeys: ["needsRfq", "awaitingSupplier", "readyToQuote", "overdue"] as const,
+      tabIds: ["in-process", "overdue", "closed"] as WorkQueueTab[],
+      shortcuts: [
+        { href: "/reports", label: "Reports" },
+        { href: "/enquiries", label: "Browse enquiries" },
+        { href: "/price-history", label: "Price history" },
+      ],
+    };
+  }
+  return {
+    title: "Daily work queue",
+    description: meta.summary,
+    kpiKeys: ["needsRfq", "awaitingSupplier", "readyToQuote", "overdue"] as const,
+    tabIds: [
+      "in-process",
+      "overdue",
+      "needs-rfq",
+      "awaiting-supplier",
+      "ready-to-quote",
+      "awaiting-approval",
+      "unconfirmed-po",
+      "confirmed-po",
+    ] as WorkQueueTab[],
+    shortcuts: [
+      { href: "/enquiries/new", label: "New enquiry" },
+      { href: "/settings", label: "Settings & users" },
+      { href: "/reports", label: "Reports" },
+      { href: "/invoices", label: "Invoices" },
+    ],
+  };
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -28,10 +109,20 @@ export default async function DashboardPage({
     mine?: string;
   }>;
 }) {
-  const session = await requireSession();
+  const session = await requirePermission("dashboard");
+  const role = session.user.role;
+  const config = roleDashboardConfig(role);
+  const canCreateEnquiry = can(role, "enquiries.write");
   const sp = await searchParams;
   const view = sp.view === "closed" ? "closed" : "in-process";
-  const tab = (sp.tab as WorkQueueTab) || (view === "closed" ? "closed" : "in-process");
+  const requestedTab = (sp.tab as WorkQueueTab) || (view === "closed" ? "closed" : "in-process");
+  const tab = (
+    view === "closed"
+      ? "closed"
+      : config.tabIds.includes(requestedTab)
+        ? requestedTab
+        : config.tabIds[0]
+  ) as WorkQueueTab;
   const statuses = statusesForTab(tab);
   const overdueWhere = overdueFilterForTab(tab);
 
@@ -72,8 +163,8 @@ export default async function DashboardPage({
     }),
   ]);
 
-  const kpis = [
-    {
+  const kpiCatalog = {
+    needsRfq: {
       label: "Needs RFQ",
       value: counts.needsRfq,
       tone: counts.needsRfq > 0 ? "danger" : "ok",
@@ -81,7 +172,7 @@ export default async function DashboardPage({
       icon: AlertTriangle,
       hint: "Send supplier RFQs",
     },
-    {
+    awaitingSupplier: {
       label: "Awaiting supplier",
       value: counts.awaitingSupplier,
       tone: counts.awaitingSupplier > 0 ? "warn" : "ok",
@@ -89,7 +180,7 @@ export default async function DashboardPage({
       icon: Clock,
       hint: "Log inbound prices",
     },
-    {
+    readyToQuote: {
       label: "Ready to quote",
       value: counts.readyToQuote,
       tone: counts.readyToQuote > 0 ? "warn" : "ok",
@@ -97,7 +188,31 @@ export default async function DashboardPage({
       icon: FolderOpen,
       hint: "Build customer quotes",
     },
-    {
+    awaitingApproval: {
+      label: "Awaiting approval",
+      value: counts.awaitingApproval,
+      tone: counts.awaitingApproval > 0 ? "warn" : "ok",
+      href: "/dashboard?tab=awaiting-approval",
+      icon: FolderOpen,
+      hint: "Approve / reject quotes",
+    },
+    unconfirmedPo: {
+      label: "Unconfirmed POs",
+      value: counts.unconfirmedPo,
+      tone: counts.unconfirmedPo > 0 ? "warn" : "ok",
+      href: "/dashboard?tab=unconfirmed-po",
+      icon: Clock,
+      hint: "Record customer POs",
+    },
+    confirmedPo: {
+      label: "Confirmed purchases",
+      value: counts.confirmedPo,
+      tone: counts.confirmedPo > 0 ? "warn" : "ok",
+      href: "/dashboard?tab=confirmed-po",
+      icon: FolderOpen,
+      hint: "Track supplier purchases",
+    },
+    overdue: {
       label: "Overdue",
       value: counts.overdue,
       tone: counts.overdue > 0 ? "danger" : "ok",
@@ -105,9 +220,11 @@ export default async function DashboardPage({
       icon: AlertTriangle,
       hint: "Past due date",
     },
-  ] as const;
+  } as const;
 
-  const processTabs: { id: WorkQueueTab; label: string; count: number }[] = [
+  const kpis = config.kpiKeys.map((key) => kpiCatalog[key]);
+
+  const allTabs: { id: WorkQueueTab; label: string; count: number }[] = [
     { id: "in-process", label: "All in process", count: counts.inProcess },
     { id: "overdue", label: "Overdue", count: counts.overdue },
     { id: "needs-rfq", label: "Needs RFQ", count: counts.needsRfq },
@@ -116,22 +233,44 @@ export default async function DashboardPage({
     { id: "awaiting-approval", label: "Awaiting approval", count: counts.awaitingApproval },
     { id: "unconfirmed-po", label: "Unconfirmed POs", count: counts.unconfirmedPo },
     { id: "confirmed-po", label: "Confirmed purchases", count: counts.confirmedPo },
+    { id: "closed", label: "Closed", count: counts.closed },
   ];
+  const processTabs = allTabs.filter((t) => config.tabIds.includes(t.id) && t.id !== "closed");
+
+  const shortcuts = config.shortcuts.filter((s) => {
+    if (s.href === "/enquiries/new") return canCreateEnquiry;
+    if (s.href === "/invoices") return can(role, "invoices");
+    if (s.href === "/payments") return can(role, "payments");
+    if (s.href === "/contracts") return can(role, "contracts");
+    if (s.href === "/settings") return can(role, "settings.view");
+    return true;
+  });
 
   return (
     <div className="animate-fade-up">
+      <RoleFocusBanner role={role} name={session.user.name} />
       <PageHeader
-        title="Daily work queue"
-        description={`Hi ${session.user.name.split(" ")[0]} — ${counts.actionItems} action item${counts.actionItems === 1 ? "" : "s"} across RFQ, quoting, and purchases.`}
+        title={config.title}
+        description={`Hi ${session.user.name.split(" ")[0]} — ${config.description}`}
         actions={
           <div className="flex gap-2">
             <ExportButton entity="enquiries" />
-            <Button asChild>
-              <Link href="/enquiries/new">New enquiry</Link>
-            </Button>
+            {canCreateEnquiry ? (
+              <Button asChild>
+                <Link href="/enquiries/new">New enquiry</Link>
+              </Button>
+            ) : null}
           </div>
         }
       />
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        {shortcuts.map((s) => (
+          <Button key={s.href} asChild size="sm" variant="outline">
+            <Link href={s.href}>{s.label}</Link>
+          </Button>
+        ))}
+      </div>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((k, i) => {
@@ -210,21 +349,23 @@ export default async function DashboardPage({
           Closed
           <span className="ml-1.5 opacity-80">({counts.closed})</span>
         </Link>
-        <Link
-          href={
-            sp.mine === "1"
-              ? `/dashboard?view=${view}&tab=${tab}`
-              : `/dashboard?view=${view}&tab=${tab}&mine=1`
-          }
-          className={cn(
-            "rounded-md px-3.5 py-1.5 text-sm font-semibold transition",
-            sp.mine === "1"
-              ? "bg-tss-navy text-white"
-              : "border border-tss-border bg-white text-tss-slate hover:bg-tss-steel-soft"
-          )}
-        >
-          My work
-        </Link>
+        {role !== Role.VIEWER ? (
+          <Link
+            href={
+              sp.mine === "1"
+                ? `/dashboard?view=${view}&tab=${tab}`
+                : `/dashboard?view=${view}&tab=${tab}&mine=1`
+            }
+            className={cn(
+              "rounded-md px-3.5 py-1.5 text-sm font-semibold transition",
+              sp.mine === "1"
+                ? "bg-tss-navy text-white"
+                : "border border-tss-border bg-white text-tss-slate hover:bg-tss-steel-soft"
+            )}
+          >
+            My work
+          </Link>
+        ) : null}
       </div>
 
       {view === "in-process" ? (
@@ -267,6 +408,8 @@ export default async function DashboardPage({
         <div className="border-b border-tss-border px-4 py-2.5 text-xs text-tss-slate">
           Showing {rows.length} enquir{rows.length === 1 ? "y" : "ies"}
           {tab === "overdue" ? " past due date" : ""}
+          {" · "}
+          {ROLE_META[role].label} view
         </div>
         <div className="overflow-x-auto">
           <table className="tss-table min-w-[1080px]">

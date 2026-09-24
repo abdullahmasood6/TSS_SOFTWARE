@@ -1,5 +1,11 @@
 import { getCompanySettings } from "@/lib/documents";
-import { requireSession, canManageUsers } from "@/lib/permissions";
+import {
+  requirePermission,
+  canManageUsers,
+  can,
+  ROLE_META,
+  permissionsFor,
+} from "@/lib/permissions";
 import { updateSettings } from "@/app/actions/workflow";
 import { PageHeader, Panel } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
@@ -10,18 +16,21 @@ import { decimalToNumber } from "@/lib/utils";
 import { prisma } from "@/lib/db";
 import { UsersManager } from "@/components/account/users-manager";
 import Link from "next/link";
+import { Role } from "@prisma/client";
+import { Badge } from "@/components/ui/badge";
 
 export default async function SettingsPage() {
-  const session = await requireSession();
+  const session = await requirePermission("settings.view");
   const settings = await getCompanySettings();
   const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
   const isAdmin = canManageUsers(session.user.role);
+  const canEditCompany = can(session.user.role, "settings.company");
 
   return (
     <div>
       <PageHeader
         title="Settings"
-        description="Company profile, document defaults, and staff access."
+        description="Company profile, document defaults, roles, and staff access."
         actions={
           <Button asChild variant="outline" size="sm">
             <Link href="/profile">My profile</Link>
@@ -29,11 +38,46 @@ export default async function SettingsPage() {
         }
       />
 
+      <Panel className="mb-6 p-4">
+        <h2 className="mb-3 text-sm font-semibold text-tss-navy">Role capabilities</h2>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {(Object.keys(ROLE_META) as Role[]).map((role) => {
+            const meta = ROLE_META[role];
+            const perms = permissionsFor(role);
+            const writeCount = perms.filter((p) => p.endsWith(".write") || p.includes("approve") || p === "settings.users").length;
+            return (
+              <div
+                key={role}
+                className={`rounded-lg border px-3 py-3 ${
+                  session.user.role === role
+                    ? "border-tss-steel bg-sky-50/60"
+                    : "border-tss-border bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-tss-navy">{meta.label}</span>
+                  {session.user.role === role ? <Badge tone="info">You</Badge> : null}
+                </div>
+                <p className="mt-1 text-xs leading-snug text-tss-slate">{meta.summary}</p>
+                <ul className="mt-2 space-y-0.5 text-[11px] text-tss-slate">
+                  {meta.focus.map((f) => (
+                    <li key={f}>· {f}</li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[10px] uppercase tracking-wide text-tss-slate">
+                  {perms.length} permissions · {writeCount} write/admin
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <Panel className="p-4">
           <h2 className="mb-4 text-sm font-semibold text-tss-navy">Company profile</h2>
           <form action={updateSettings} className="space-y-3">
-            <fieldset disabled={!isAdmin} className="space-y-3">
+            <fieldset disabled={!canEditCompany} className="space-y-3">
               <div className="space-y-1">
                 <Label>Company name</Label>
                 <Input name="companyName" defaultValue={settings.companyName} />
@@ -75,7 +119,7 @@ export default async function SettingsPage() {
                   />
                 </div>
               </div>
-              {isAdmin ? (
+              {canEditCompany ? (
                 <Button type="submit">Save company</Button>
               ) : (
                 <p className="text-xs text-tss-slate">Only admins can edit company settings.</p>
@@ -87,7 +131,7 @@ export default async function SettingsPage() {
         <Panel className="p-4">
           <h2 className="mb-4 text-sm font-semibold text-tss-navy">Document number prefixes</h2>
           <form action={updateSettings} className="space-y-3">
-            <fieldset disabled={!isAdmin} className="space-y-3">
+            <fieldset disabled={!canEditCompany} className="space-y-3">
               <input type="hidden" name="companyName" value={settings.companyName} />
               <input type="hidden" name="shortName" value={settings.shortName} />
               <input type="hidden" name="address" value={settings.address || ""} />
@@ -126,7 +170,7 @@ export default async function SettingsPage() {
                 Next sequences: ENQ {settings.enqSeq + 1} · RFQ {settings.rfqSeq + 1} · QT{" "}
                 {settings.quoteSeq + 1} · CPO {settings.poSeq + 1} · PO {settings.purchaseSeq + 1}
               </p>
-              {isAdmin ? <Button type="submit">Save prefixes</Button> : null}
+              {canEditCompany ? <Button type="submit">Save prefixes</Button> : null}
             </fieldset>
           </form>
         </Panel>
@@ -162,7 +206,7 @@ export default async function SettingsPage() {
                   <tr key={u.id} className="border-t border-tss-border/70">
                     <td className="py-2">{u.name}</td>
                     <td className="py-2 text-tss-slate">{u.email}</td>
-                    <td className="py-2">{u.role}</td>
+                    <td className="py-2">{ROLE_META[u.role]?.label || u.role}</td>
                   </tr>
                 ))}
             </tbody>

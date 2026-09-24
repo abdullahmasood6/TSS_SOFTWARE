@@ -5,6 +5,7 @@ import { SearchBar } from "@/components/ui/search-bar";
 import { CatalogManager } from "@/components/master/catalog-manager";
 import { decimalToNumber } from "@/lib/utils";
 import { PriceHistoryType } from "@prisma/client";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function CatalogPage({
   searchParams,
@@ -12,6 +13,8 @@ export default async function CatalogPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+  const session = await requirePermission("catalog");
+  const canEdit = can(session.user.role, "catalog.write");
   const parts = await prisma.part.findMany({
     where: q
       ? {
@@ -44,7 +47,7 @@ export default async function CatalogPage({
       <div className="mb-4">
         <SearchBar defaultValue={q} placeholder="Search part number or description…" />
       </div>
-      <CatalogManager
+      <CatalogManager canEdit={canEdit}
         parts={parts.map((p) => ({
           id: p.id,
           partNumber: p.partNumber,

@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireSession, canManageUsers } from "@/lib/permissions";
+import { requireSession, assertCan } from "@/lib/permissions";
 
 export async function updateMyProfile(formData: FormData) {
   const session = await requireSession();
@@ -46,7 +46,7 @@ export async function changeMyPassword(formData: FormData) {
 
 export async function createStaffUser(formData: FormData) {
   const session = await requireSession();
-  if (!canManageUsers(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "settings.users");
 
   const data = z
     .object({
@@ -79,7 +79,7 @@ export async function createStaffUser(formData: FormData) {
 
 export async function updateStaffUser(id: string, formData: FormData) {
   const session = await requireSession();
-  if (!canManageUsers(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "settings.users");
 
   const name = String(formData.get("name") || "").trim();
   const role = String(formData.get("role") || "") as Role;
@@ -110,7 +110,7 @@ export async function updateStaffUser(id: string, formData: FormData) {
 
 export async function setStaffUserActive(id: string, active: boolean) {
   const session = await requireSession();
-  if (!canManageUsers(session.user.role)) throw new Error("Unauthorized");
+  assertCan(session.user.role, "settings.users");
   if (id === session.user.id && !active) {
     throw new Error("You cannot deactivate your own account");
   }

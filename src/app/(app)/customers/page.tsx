@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/ui/panel";
 import { ExportButton } from "@/components/ui/export-button";
 import { SearchBar } from "@/components/ui/search-bar";
 import { CustomersManager } from "@/components/master/customers-manager";
+import { requirePermission, can } from "@/lib/permissions";
 
 export default async function CustomersPage({
   searchParams,
@@ -10,6 +11,8 @@ export default async function CustomersPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+  const session = await requirePermission("customers");
+  const canEdit = can(session.user.role, "customers.write");
   const customers = await prisma.customer.findMany({
     where: q
       ? {
@@ -34,7 +37,7 @@ export default async function CustomersPage({
       <div className="mb-4">
         <SearchBar defaultValue={q} placeholder="Search customers…" />
       </div>
-      <CustomersManager customers={customers} />
+      <CustomersManager customers={customers} canEdit={canEdit} />
     </div>
   );
 }
